@@ -1,0 +1,188 @@
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100vh;
+  background: #f5f8fd;
+}
+
+.container-sessao {
+  width: 100vw;
+  min-height: 100vh;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 0 50px 0;
+  background: #f5f8fd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.container-sessao h2 {
+  max-width: 1100px;
+  width: 100%;
+  padding: 36px 0 12px 0;
+  margin: 0 auto;
+  color: #22416c;
+  font-size: 2.1rem;
+  font-weight: 700;
+  text-align: center;
+  background: #ecf1fa;
+  letter-spacing: 1px;
+  border-bottom: 2px solid #dde4f2;
+  border-radius: 0 0 10px 10px;
+}
+
+.form-sessao {
+  width: 100%;
+  max-width: 1100px;
+  margin: 28px auto 25px auto;
+  background: #f0f4fa;
+  padding: 26px 18px 22px 18px;
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 22px;
+  justify-content: flex-start;
+  box-shadow: 0 1px 12px 0 #d7dbe13b;
+}
+
+.form-sessao input,
+.form-sessao select {
+  min-width: 170px;
+  max-width: 270px;
+  flex: 1 1 210px;
+  padding: 10px 8px;
+  border: 1.5px solid #d4deec;
+  border-radius: 7px;
+  outline: none;
+  font-size: 1rem;
+  background: #fff;
+  transition: border-color 0.2s;
+}
+
+.form-sessao input:focus,
+.form-sessao select:focus {
+  border-color: #3a7eea;
+}
+
+.form-sessao button {
+  min-width: 120px;
+  padding: 10px 0;
+  background: #286ed1;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0;
+  box-shadow: 0 1px 8px #a9cafb21;
+  transition: background 0.2s;
+}
+.form-sessao button:hover {
+  background: #1a4b93;
+}
+
+h3 {
+  max-width: 1100px;
+  margin: 32px auto 13px auto;
+  font-size: 1.2rem;
+  color: #22416c;
+  text-align: center;
+  font-weight: 600;
+}
+
+table {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  border-collapse: collapse;
+  background: #fff;
+  border-radius: 12px;
+  overflow-x: auto;
+  font-size: 1rem;
+  box-shadow: 0 1px 8px 0 #d7dbe13b;
+}
+
+thead {
+  background: #e4eaf6;
+  color: #22416c;
+  font-weight: 600;
+}
+th, td {
+  padding: 12px 12px;
+  text-align: left;
+  border-bottom: 1px solid #e4e9f0;
+}
+
+th {
+  text-align: center;
+  background: #e2e7f4;
+  font-size: 1.05rem;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+td {
+  vertical-align: top;
+  font-size: 1rem;
+}
+
+table button {
+  background: #e9efff;
+  color: #29496e;
+  border: 1px solid #b6cff6;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-right: 6px;
+  transition: background 0.2s, color 0.2s;
+}
+table button:hover {
+  background: #d1e0ff;
+  color: #11315e;
+}
+
+@media (max-width: 1200px) {
+  .container-sessao h2,
+  .form-sessao,
+  h3,
+  table {
+    max-width: 98vw;
+  }
+}
+@media (max-width: 800px) {
+  .form-sessao {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px 2vw;
+  }
+  .form-sessao input,
+  .form-sessao select {
+    min-width: 95vw;
+    max-width: 99vw;
+  }
+  table, thead, tbody, th, td, tr {
+    font-size: 0.96rem;
+  }
+  .container-sessao h2 {
+    font-size: 1.3rem;
+    padding: 18px 0 8px 0;
+  }
+}
+@media (max-width: 600px) {
+  .container-sessao h2, h3 {
+    font-size: 1.1rem;
+  }
+  .form-sessao input,
+  .form-sessao select {
+    min-width: 97vw;
+    max-width: 99vw;
+    font-size: 1rem;
+  }
+}

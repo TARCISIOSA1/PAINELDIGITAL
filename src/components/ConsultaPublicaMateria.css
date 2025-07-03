@@ -1,0 +1,92 @@
+.consulta-materia-publica {
+  background: #f6f8fa;
+  border-radius: 20px;
+  padding: 30px 18px;
+  max-width: 900px;
+  margin: 28px auto;
+  box-shadow: 0 2px 8px #0001;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.card-materia {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px #0002;
+  margin: 26px 0;
+  padding: 24px 20px;
+  position: relative;
+}
+.numero-materia {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: #005ea7;
+}
+.titulo-materia {
+  font-size: 1.23rem;
+  font-weight: 600;
+  margin-bottom: 7px;
+  color: #173875;
+}
+.descricao-materia {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: #444;
+}
+.autor-materia {
+  font-size: 0.97rem;
+  margin-bottom: 11px;
+  color: #222;
+}
+.opcoes-voto {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.botao-voto {
+  background: #245bb6;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  padding: 8px 18px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.18s;
+}
+.botao-voto:disabled {
+  background: #b8d1f7;
+  cursor: not-allowed;
+}
+.comentario-input {
+  border: 1px solid #c7c7c7;
+  border-radius: 12px;
+  padding: 7px 13px;
+  width: 230px;
+}
+.msg-voto {
+  color: #24811b;
+  font-weight: 500;
+  margin-top: 12px;
+}
+.comentarios {
+  margin-top: 10px;
+  font-size: 0.98rem;
+  background: #f6f8fa;
+  padding: 8px 14px;
+  border-radius: 10px;
+}
+.comentarios ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.comentarios li {
+  margin-bottom: 7px;
+}
+.input-form {
+  border: 1px solid #bfc2cb;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-size: 1rem;
+  width: 210px;
+}
+

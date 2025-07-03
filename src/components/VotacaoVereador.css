@@ -1,0 +1,76 @@
+.votacao-vereador-container {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 30px;
+  background-color: #f9f9f9;
+  border-radius: 16px;
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.votacao-vereador-container h2 {
+  margin-bottom: 10px;
+  font-size: 24px;
+}
+
+.votacao-vereador-container p {
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+.relogio {
+  margin-top: 10px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #555;
+}
+
+.botoes-voto {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 30px;
+}
+
+.botao-voto {
+  padding: 15px 30px;
+  font-size: 18px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.botao-voto:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.botao-voto.sim {
+  background-color: #27ae60;
+  color: white;
+}
+
+.botao-voto.nao {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.botao-voto.abstencao {
+  background-color: #f1c40f;
+  color: black;
+}
+
+.botao-voto.votado {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.status-voto {
+  margin-top: 25px;
+  font-size: 18px;
+  color: #2980b9;
+  font-weight: bold;
+}

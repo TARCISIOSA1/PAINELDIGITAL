@@ -1,0 +1,169 @@
+.emailchat-container {
+  display: flex;
+  height: 90vh;
+  font-family: "Segoe UI", sans-serif;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.emailchat-sidebar {
+  width: 260px;
+  background-color: #f8f8f8;
+  border-right: 1px solid #ddd;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+.emailchat-sidebar button {
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: 4px;
+  background-color: #e0e0e0;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.emailchat-sidebar button:hover {
+  background-color: #ffb300;
+  color: #202a36;
+}
+
+.btn-ativo {
+  background-color: #ffb300 !important;
+  color: #202a36 !important;
+}
+
+.btn-novo {
+  background-color: #ffb300;
+  color: #202a36;
+  font-weight: bold;
+}
+
+.lista-emails {
+  flex-grow: 1;
+  overflow-y: auto;
+  margin-top: 10px;
+}
+
+.item-email {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  cursor: pointer;
+}
+
+.item-email:hover {
+  background-color: #f0f0f0;
+}
+
+.email-selecionado {
+  background-color: #ffedc7;
+}
+
+.sem-email {
+  font-style: italic;
+  color: #666;
+  padding: 10px;
+}
+
+.emailchat-conteudo {
+  flex-grow: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.visualizar-email h3 {
+  margin-top: 0;
+  color: #003366;
+}
+
+.visualizar-email p {
+  line-height: 1.4;
+}
+
+.novo-email-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 600px;
+}
+
+.novo-email-form input[type="text"],
+.novo-email-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 80px;
+}
+
+.novo-email-form textarea {
+  min-height: 120px;
+}
+
+.novo-email-form input[type="file"] {
+  margin-top: 4px;
+}
+
+.novo-email-form .botoes {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.novo-email-form button {
+  padding: 8px 16px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+}
+
+.novo-email-form button.enviar {
+  background-color: #ffb300;
+  color: #202a36;
+}
+
+.novo-email-form button.cancelar {
+  background-color: #c0c0c0;
+  color: #444;
+}
+
+.email-vazio {
+  color: #666;
+  font-style: italic;
+  text-align: center;
+  margin-top: 50px;
+}
+.novo-email-form input[type="text"] {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  height: 20px; /* reduzir altura dos inputs texto */
+}
+
+.novo-email-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  resize: vertical;
+  min-height: 280px; /* aumentar campo mensagem */
+  margin-bottom: 8px;
+}
+

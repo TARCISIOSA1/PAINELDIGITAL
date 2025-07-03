@@ -1,0 +1,104 @@
+.votacao-container {
+  background: #f6fafd;
+  padding: 22px 14px 60px 14px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  max-width: 1100px;
+  margin: auto;
+}
+
+.painel-titulo {
+  text-align: center;
+  font-size: 2rem;
+  margin: 18px 0 10px 0;
+  color: #195ca5;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.abas-votacao {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.aba-btn {
+  border: none;
+  background: #f0f4fa;
+  color: #21416b;
+  padding: 9px 21px;
+  border-radius: 9px 9px 0 0;
+  font-size: 1.05rem;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.2s;
+  margin-bottom: -2px;
+  border-bottom: 2px solid #d0e4fb;
+}
+.aba-btn.ativo {
+  background: #fff;
+  color: #195ca5;
+  border-bottom: 2px solid #195ca5;
+  font-weight: bold;
+}
+
+.conteudo-aba {
+  background: #fff;
+  border-radius: 0 0 10px 10px;
+  box-shadow: 0 2px 9px #dee7ef5c;
+  padding: 30px 24px 26px 24px;
+  min-height: 360px;
+}
+
+.botao-verde,
+.botao-vermelho,
+.botao-azul,
+.botao-cinza {
+  margin: 7px 6px 7px 0;
+  padding: 8px 19px;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+  box-shadow: 0 1px 4px #e3e9f4;
+}
+.botao-verde { background: #15b374; color: #fff; }
+.botao-verde:hover { background: #179961; }
+.botao-vermelho { background: #e2414c; color: #fff; }
+.botao-vermelho:hover { background: #c71b2b; }
+.botao-azul { background: #3470ea; color: #fff; }
+.botao-azul:hover { background: #2555be; }
+.botao-cinza { background: #888; color: #fff; }
+.botao-cinza:hover { background: #333; }
+
+.presenca-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 18px 0;
+  background: #fafbfc;
+}
+.presenca-table th, .presenca-table td {
+  padding: 8px 10px;
+  font-size: 1rem;
+  border-bottom: 1px solid #e1e4eb;
+}
+.presenca-table th {
+  background: #e9eef6;
+}
+
+.materia-selecionada {
+  background: #ebf8e1;
+}
+
+@media (max-width: 850px) {
+  .conteudo-aba {
+    padding: 10px 3vw 20px 3vw;
+  }
+  .painel-titulo {
+    font-size: 1.15rem;
+  }
+}

@@ -1,0 +1,27 @@
+// src/utils/openai.js
+export async function corrigirTextoPorIA(textoOriginal) {
+  const resposta = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer SUA_CHAVE_OPENAI_AQUI",
+    },
+    body: JSON.stringify({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "Você é um revisor de texto de sessão legislativa. Corrija erros gramaticais e melhore a pontuação sem alterar o sentido.",
+        },
+        {
+          role: "user",
+          content: textoOriginal,
+        },
+      ],
+      temperature: 0.3,
+    }),
+  });
+
+  const data = await resposta.json();
+  return data.choices[0].message.content.trim();
+}

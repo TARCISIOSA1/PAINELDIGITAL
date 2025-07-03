@@ -1,0 +1,257 @@
+/* Layout geral da sessão */
+.sessao-container {
+  background: #f9fbfe;
+  border-radius: 10px;
+  padding: 20px 12px 30px 12px;
+  max-width: 980px;
+}
+
+/* Abas */
+.abas-sessao {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.aba {
+  background: #e3e8f0;
+  border: none;
+  padding: 5px 13px;
+  border-radius: 8px 8px 0 0;
+  font-weight: 600;
+  color: #345;
+  cursor: pointer;
+  font-size: 15px;
+}
+.aba.ativa {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* Campos compactos */
+.form-sessao .linha-campos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.campo-form {
+  flex: 1 1 150px;
+  min-width: 140px;
+  max-width: 210px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 4px;
+}
+
+.campo-form label {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  color: #283655;
+}
+
+.campo-form input,
+.campo-form select,
+.campo-form textarea {
+  font-size: 14px;
+  padding: 4px 7px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fcfcfd;
+  margin-bottom: 2px;
+  height: 32px;
+  outline: none;
+  transition: border .2s;
+}
+
+.campo-form textarea {
+  min-height: 40px;
+  height: 50px;
+  max-height: 110px;
+  resize: vertical;
+}
+
+.campo-form input[type="date"],
+.campo-form input[type="time"] {
+  font-size: 14px;
+  height: 32px;
+}
+
+/* Botões */
+.btn-mesa-adicionar {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 4px 10px;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 14px;
+}
+.botoes-form button {
+  font-size: 14px;
+  padding: 5px 15px;
+  border-radius: 5px;
+  border: none;
+  margin-right: 5px;
+}
+
+/* Tabelas compactas */
+.mesa-table,
+.presenca-table,
+.table-sessoes-institucional table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 1px 5px #0001;
+}
+
+.mesa-table th, .mesa-table td,
+.presenca-table th, .presenca-table td,
+.table-sessoes-institucional th, .table-sessoes-institucional td {
+  border: 1px solid #e6e6ee;
+  padding: 4px 5px;
+  text-align: left;
+  font-size: 14px;
+}
+
+/* Status badge */
+.status-sessao {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.status-prevista { background: #e5eaff; color: #2563eb; }
+.status-ativa { background: #e0ffe6; color: #188c3e; }
+.status-finalizada, .status-realizada { background: #e6f5ff; color: #188c3e; }
+.status-suspensa, .status-pausada { background: #fff4d6; color: #c67c1f; }
+.status-cancelada { background: #ffe2e2; color: #a01818; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .sessao-container { padding: 6px 2vw 20px 2vw; }
+  .form-sessao .linha-campos { flex-direction: column; }
+  .campo-form { max-width: 100%; }
+}
+/* CAMPOS DO FORMULÁRIO BASICO REDUZIDOS */
+.form-sessao input,
+.form-sessao select,
+.form-sessao textarea {
+  height: 34px !important;
+  min-height: 30px !important;
+  max-height: 36px !important;
+  padding: 2px 8px !important;
+  font-size: 14px !important;
+  border-radius: 5px !important;
+  background: #fcfcfd !important;
+  box-sizing: border-box;
+}
+
+.form-sessao textarea {
+  min-height: 34px !important;
+  max-height: 90px !important;
+  resize: vertical;
+}
+
+/* Remove altura de container de campo-form, se existir */
+.form-sessao .campo-form {
+  min-height: unset !important;
+  height: auto !important;
+  padding: 0 !important;
+  margin-bottom: 4px !important;
+}
+
+/* Títulos do campo */
+.form-sessao label {
+  font-size: 13px !important;
+  margin-bottom: 2px !important;
+}
+
+/* Para corrigir altura de selects (inclui Chrome e outros) */
+.form-sessao select {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+}
+
+
+.linha-campos {
+  gap: 8px !important;
+  margin-bottom: 8px !important;
+}
+
+/* Opcional: container das linhas um pouco menor */
+.sessao-container {
+  padding-top: 10px !important;
+  padding-bottom: 18px !important;
+}
+/* Estilo específico para o campo Resumo da Sessão */
+textarea[name="resumoSessao"],
+textarea#resumoSessao {
+  min-height: 70px !important;
+  max-height: 220px !important;
+  height: 100px !important;
+  font-size: 15px !important;
+  padding: 8px !important;
+  line-height: 1.35 !important;
+  resize: vertical;
+}
+.btn-tabela[style*="#555"] { background: #555 !important; }
+/* Botões gerais do formulário */
+.botoes-form button,
+.btn-tabela,
+.btn-mesa-adicionar {
+  background: #2563eb;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 15px;
+  margin-right: 6px;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  box-shadow: 0 1px 3px #0001;
+  outline: none;
+}
+
+.botoes-form button:hover,
+.btn-tabela:hover,
+.btn-mesa-adicionar:hover {
+  background: #143266;
+  color: #fff;
+}
+
+.btn-tabela {
+  padding: 6px 14px;
+  min-width: 38px;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+}
+
+.btn-tabela:active {
+  background: #1749b1;
+}
+
+/* Para "Detalhes" ou botões específicos */
+.btn-tabela.detalhes {
+  background: #fff;
+  color: #2563eb;
+  border: 1px solid #2563eb;
+  font-weight: 700;
+}
+.btn-tabela.detalhes:hover {
+  background: #2563eb;
+  color: #fff;
+}
+
+

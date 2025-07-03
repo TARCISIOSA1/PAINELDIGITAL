@@ -1,0 +1,92 @@
+.agenda-container {
+  max-width: 920px;
+  margin: 36px auto;
+  padding: 24px 32px 32px 32px;
+  background: #f5f7fa;
+  border-radius: 20px;
+  box-shadow: 0 4px 24px #0002;
+}
+
+.agenda-titulo {
+  font-size: 2.1rem;
+  margin-bottom: 28px;
+  color: #17335a;
+  font-weight: bold;
+  text-align: center;
+  letter-spacing: 0.01em;
+}
+
+.agenda-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 18px;
+  align-items: end;
+  margin-bottom: 34px;
+}
+
+.agenda-form input[type="text"],
+.agenda-form input[type="date"],
+.agenda-form input[type="time"] {
+  padding: 10px 12px;
+  border: 1px solid #bbc6d0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #fff;
+  transition: border 0.2s;
+}
+
+.agenda-form input:focus {
+  border: 1.7px solid #426be7;
+  outline: none;
+}
+
+.agenda-btn {
+  padding: 12px 0;
+  background: #17335a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.agenda-btn:hover {
+  background: #2852a0;
+}
+
+.rbc-toolbar, .rbc-btn-group, .rbc-toolbar button {
+  z-index: 20 !important;
+  position: relative !important;
+  pointer-events: all !important;
+}
+
+.agenda-container {
+  position: static !important;
+  overflow: visible !important;
+  z-index: 1 !important;
+}
+
+/* Responsivo */
+@media (max-width: 700px) {
+  .agenda-container {
+    padding: 10px 3vw 18px 3vw;
+  }
+  .agenda-form {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+/* FORÇA O CALENDÁRIO A FICAR ACESSÍVEL E INTERATIVO */
+.rbc-calendar,
+.rbc-calendar * {
+  z-index: 999999 !important;
+  pointer-events: auto !important;
+}
+
+.agenda-container {
+  position: relative !important;
+  z-index: 9999 !important;
+  background: #f5f7fa !important;
+}

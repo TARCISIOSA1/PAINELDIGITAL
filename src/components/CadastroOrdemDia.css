@@ -1,0 +1,52 @@
+.cadastro-ordem-dia {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.cadastro-ordem-dia form > div {
+  margin-bottom: 1rem;
+}
+
+.cadastro-ordem-dia label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+}
+
+.cadastro-ordem-dia input[type="text"],
+.cadastro-ordem-dia input[type="date"],
+.cadastro-ordem-dia select,
+.cadastro-ordem-dia textarea {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.cadastro-ordem-dia button {
+  background-color: #F95738;
+  color: white;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.cadastro-ordem-dia button:hover {
+  background-color: #0D3B66;
+}
+
+.cadastro-ordem-dia ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+.cadastro-ordem-dia li {
+  background-color: #f4f4f4;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+}

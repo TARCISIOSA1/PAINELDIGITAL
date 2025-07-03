@@ -1,0 +1,170 @@
+.tram-container {
+  width: 100vw;
+  min-height: 100vh;
+  background: #f5f8fd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 40px;
+}
+
+.sistema-nome {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto 20px auto;
+  color: #22416c;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  background: #ecf1fa;
+  letter-spacing: 1px;
+  padding: 32px 0 16px 0;
+  border-bottom: 2px solid #dde4f2;
+  border-radius: 0 0 10px 10px;
+}
+
+.tram-filtros {
+  width: 100%;
+  max-width: 1100px;
+  margin: 10px auto 18px auto;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 14px;
+}
+.tram-filtros label {
+  color: #29496e;
+  font-weight: 500;
+  font-size: 1.05rem;
+}
+.tram-filtros select {
+  margin-left: 8px;
+  padding: 6px 12px;
+  border-radius: 5px;
+  border: 1.5px solid #c2d1ec;
+  background: #f0f6ff;
+  font-size: 1rem;
+  outline: none;
+}
+
+.tram-table-container {
+  width: 100%;
+  max-width: 1100px;
+  background: #fff;
+  border-radius: 12px;
+  margin: 0 auto 18px auto;
+  box-shadow: 0 1px 10px #d7dbe13b;
+  overflow-x: auto;
+}
+
+.tram-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 12px;
+  font-size: 1rem;
+}
+
+.tram-table th,
+.tram-table td {
+  padding: 10px 10px;
+  text-align: left;
+  border-bottom: 1px solid #e6eaf0;
+}
+
+.tram-table th {
+  background: #e2e7f4;
+  color: #22416c;
+  font-weight: 600;
+  text-align: center;
+  font-size: 1.07rem;
+}
+
+.tram-table tr:last-child td {
+  border-bottom: none;
+}
+.tram-table tbody tr {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.tram-table tbody tr:hover {
+  background: #e7f1ff;
+}
+.tram-table tr.selected {
+  background: #c7e1fa !important;
+}
+
+.tram-detalhes {
+  width: 100%;
+  max-width: 600px;
+  background: #f4f7fd;
+  margin: 28px auto 0 auto;
+  padding: 28px 22px 18px 22px;
+  border: 1.5px solid #b6cff6;
+  border-radius: 14px;
+  box-shadow: 0 2px 14px #d7dbe14b;
+}
+.tram-detalhes h3 {
+  color: #22416c;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-top: 0;
+}
+.tram-detalhes h4 {
+  margin-bottom: 10px;
+  color: #35549e;
+}
+
+.tram-btns {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.tram-btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: none;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.tram-btn.blue {
+  background: #286ed1;
+  color: #fff;
+}
+.tram-btn.blue:hover {
+  background: #144083;
+}
+.tram-btn.red {
+  background: #d14a4a;
+  color: #fff;
+}
+.tram-btn.red:hover {
+  background: #8a1616;
+}
+.tram-btn.gray {
+  background: #e4e9f0;
+  color: #33425b;
+}
+.tram-btn.gray:hover {
+  background: #d2dae6;
+}
+
+@media (max-width: 1200px) {
+  .tram-table-container,
+  .tram-detalhes,
+  .sistema-nome {
+    max-width: 98vw;
+  }
+}
+@media (max-width: 600px) {
+  .tram-table th,
+  .tram-table td {
+    font-size: 0.95rem;
+    padding: 7px 4px;
+  }
+  .tram-detalhes {
+    padding: 14px 7px;
+    font-size: 0.97rem;
+  }
+}

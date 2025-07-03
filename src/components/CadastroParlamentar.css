@@ -1,0 +1,105 @@
+/* CadastroParlamentar.css */
+
+.cadastro-parlamentar {
+  padding: 20px;
+  background-color: #f9fbfc;
+  border-radius: 10px;
+  max-width: 1000px;
+  margin: auto;
+  font-family: "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+
+.cadastro-parlamentar h2,
+.cadastro-parlamentar h3 {
+  text-align: center;
+  color: #003366;
+}
+
+.formulario {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.formulario input,
+.formulario select,
+.formulario textarea {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.formulario textarea {
+  height: 80px;
+}
+
+button {
+  padding: 8px 12px;
+  background-color: #2e6de6;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 6px;
+  margin: 3px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background-color: #1c4ec4;
+}
+
+button[style*="background-color: #999"] {
+  background-color: #999 !important;
+}
+
+.table-container {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #ffffff;
+  min-width: 800px;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: center;
+  vertical-align: middle;
+}
+
+th {
+  background-color: #e8f0fe;
+  color: #333;
+}
+
+img {
+  border-radius: 4px;
+  max-width: 50px;
+  max-height: 50px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #aaa;
+  font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .formulario {
+    grid-template-columns: 1fr;
+  }
+}
+
+select, input[type="file"] {
+  cursor: pointer;
+}

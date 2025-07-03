@@ -1,0 +1,311 @@
+/* ==================== BASE & RESET ==================== */
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: #ffffff; /* Branco limpo */
+  color: #2f3d4d; /* Texto mais escuro, suave */
+}
+
+/* ==================== CONTAINER PRINCIPAL ==================== */
+.painel-ia-container {
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px 16px;
+  box-sizing: border-box;
+}
+
+/* ==================== CABEÇALHO ==================== */
+.painel-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 16px;
+  background: #e4e7ec; /* Cinza suave */
+  border-bottom: 2px solid #d1d7e6; /* Borda discreta */
+  position: relative;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+.logo-header-centered {
+  height: 60px;
+  max-width: 120px;
+  object-fit: contain;
+}
+.header-titulo h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #2a3e5c; /* Azul mais sério */
+  text-align: center;
+}
+.painel-btn-fullscreen {
+  background: transparent;
+  border: none;
+  font-size: 1.9rem;
+  cursor: pointer;
+  color: #3c4f75; /* Azul escuro */
+  position: absolute;
+  right: 24px;
+  top: 16px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  transition: background 0.18s, color 0.18s;
+}
+.painel-btn-fullscreen:hover {
+  background: #dae1f2; /* Azul claro em hover */
+  color: #2c3e5f;
+}
+
+/* ==================== SESSÃO & PRESENTES ==================== */
+.sessao-info-presentes {
+  max-width: 100%;
+  margin: 28px auto;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d1d7e6;
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  box-sizing: border-box;
+}
+.info-gerais,
+.presentes-box {
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 0 6px rgba(0,0,0,0.05);
+  padding: 15px 20px;
+  box-sizing: border-box;
+}
+.info-gerais {
+  flex: 2 1 240px;
+}
+.presentes-box {
+  flex: 1.5 1 210px;
+}
+.info-gerais h2,
+.presentes-box h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #2a3e5c;
+}
+.tags-presentes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 11px;
+  margin-top: 6px;
+}
+.tag-present {
+  display: flex;
+  align-items: center;
+  background: #f2f5f9;
+  border-radius: 7px;
+  padding: 3px 10px 3px 5px;
+  font-size: 1rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+.tag-foto,
+.tag-foto-placeholder {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #d0d6e0;
+  margin-right: 7px;
+  border: 1px solid #c1cbd4;
+}
+.tag-foto-placeholder {
+  background: #b1b8c4;
+}
+.tag-nome {
+  font-weight: 500;
+  color: #2a3e5c;
+}
+.tag-partido {
+  color: #5c6b82;
+  font-size: 0.95rem;
+  margin-left: 6px;
+}
+
+/* ==================== BLOCO TRIBUNA NORMAL ==================== */
+.bloco-tribuna-central {
+  max-width: 100%;
+  margin: 28px auto;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d1d7e6;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+.bloco-tribuna-central h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #2a3e5c;
+}
+.tribuna-topo {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 13px;
+}
+.foto-orador-destaque,
+.foto-parlamentar-placeholder {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #e1e4e9;
+  border: 2.5px solid #c1cbd4;
+}
+.info-orador p {
+  margin: 0 0 2px;
+  font-size: 1.08rem;
+}
+.timer-tribuna {
+  margin-left: auto;
+  font-size: 1.5rem;
+  font-weight: 700;
+  padding: 7px 13px;
+  border-radius: 7px;
+  background: #e9edf4;
+  color: #37485b;
+}
+.timer-alert {
+  background: #fce1e1 !important;
+  color: #b93e3e !important;
+  animation: pisca 0.8s infinite alternate;
+}
+@keyframes pisca {
+  from {opacity:1;}
+  to {opacity:0.65;}
+}
+
+/* ==================== LEGENDA NORMAL ==================== */
+.overlay-legendas {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: #2f3d4d !important;
+  border-radius: 11px;
+  margin: 13px auto 0;
+  font-size: 1.05rem;
+  line-height: 1.7rem;
+  width: 80%;
+  max-width: 600px;
+  min-width: 180px;
+  max-height: 8rem;
+  padding: 9px 16px;
+  text-align: left;
+  letter-spacing: 1px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.legenda-linha {
+  margin: 0 0 3px;
+  width: 100%;
+}
+
+/* ==================== BLOCO VOTAÇÃO NORMAL ==================== */
+.bloco-votacao-central {
+  max-width: 100%;
+  margin: 28px auto;
+  padding: 16px;
+  background: #ffffff;
+  border: 1px solid #d1d7e6;
+  border-radius: 12px;
+  box-sizing: border-box;
+}
+.bloco-votacao-central h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #2a3e5c;
+}
+.tabela-votos-central {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  background: #f7f8fa;
+  border-radius: 7px;
+}
+.tabela-votos-central th,
+.tabela-votos-central td {
+  padding: 7px 6px;
+  border-bottom: 1px solid #e1e4e9;
+  text-align: left;
+  font-size: 1.07rem;
+}
+.tabela-votos-central th {
+  background: #e3e6ef;
+  font-weight: 600;
+}
+.siгla-partido {
+  color: #5c6b82;
+  font-size: 0.93rem;
+  margin-left: 4px;
+}
+.resultado-final {
+  margin-top: 13px;
+  font-size: 1.1rem;
+  color: #2f3d4d;
+}
+
+/* ==================== FULLSCREEN TRIBUNA ==================== */
+.painel-fullscreen,
+.tribuna-fullscreen,
+.votacao-fullscreen {
+  background: #ffffff !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  position: fixed !important;
+  left: 0;
+  top: 0;
+  z-index: 99999;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: auto;
+}
+.tribuna-fullscreen .tribuna-central-box {
+  max-width: 800px;
+  margin: 40px auto 0;
+  padding: 0 16px;
+}
+.tribuna-legenda-full {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: #2f3d4d !important;
+  width: 80%;
+  max-width: 600px;
+  margin: 16px auto 0;
+  font-size: 1.1rem;
+  line-height: 1.6rem;
+  padding: 16px 22px;
+  text-align: left;
+  overflow-y: auto;
+}
+.tribuna-legenda-full p {
+  margin: 0 0 4px;
+  width: 100%;
+}
+
+/* ==================== RESPONSIVO ==================== */
+@media (max-width: 900px) {
+  .overlay-legendas,
+  .tribuna-legenda-full {
+    width: 94%;
+    max-width: none;
+    font-size: 1rem;
+    padding: 10px 4vw;
+  }
+  .timer-tribuna {
+    font-size: 1.2rem;
+    padding: 6px 10px;
+  }
+}

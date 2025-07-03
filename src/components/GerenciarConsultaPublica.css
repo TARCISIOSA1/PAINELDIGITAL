@@ -1,0 +1,226 @@
+.painel-gerenciar-consulta {
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 32px 16px 48px 16px;
+  margin: 32px auto 38px auto;
+  max-width: 1200px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+
+.painel-gerenciar-consulta h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  font-weight: 700;
+  font-size: 2rem;
+  color: #17447a;
+  letter-spacing: 0.5px;
+}
+
+.tabela-materias {
+  width: 100%;
+  border-collapse: collapse;
+  background: #f8fafc;
+  margin-top: 14px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 5px #0001;
+}
+
+.tabela-materias th, .tabela-materias td {
+  border: 1px solid #e1e1e1;
+  padding: 10px 7px;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.tabela-materias th {
+  background: #f3f6fa;
+  font-weight: 700;
+  color: #193972;
+  border-bottom: 2px solid #dde3ea;
+  font-size: 1.05rem;
+}
+
+.tabela-materias td {
+  background: #fff;
+  border-bottom: 1px solid #ececec;
+  vertical-align: middle;
+}
+
+.tabela-materias tr:hover td {
+  background: #f5faff;
+}
+
+.tabela-materias input[type="text"], 
+.tabela-materias input[type="date"], 
+.tabela-materias select {
+  border: 1px solid #bfc2cb;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  margin: 1px 0;
+}
+
+.tabela-materias button, .btn-detalhes {
+  background: #1864ab;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 6px 16px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+  margin-left: 2px;
+}
+
+.tabela-materias button:disabled {
+  background: #b8d1f7;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.btn-detalhes {
+  padding: 6px 16px;
+  background: #258c35;
+  font-size: 1rem;
+}
+
+.btn-detalhes:hover,
+.tabela-materias button:hover:not(:disabled) {
+  background: #17447a;
+}
+
+@media (max-width: 850px) {
+  .painel-gerenciar-consulta {
+    padding: 8px 2vw;
+    max-width: 98vw;
+  }
+  .tabela-materias th, .tabela-materias td {
+    font-size: 0.98rem;
+    padding: 8px 5px;
+  }
+  .modal-detalhes {
+    width: 99vw;
+    padding: 14px 6vw;
+  }
+}
+
+/* --------- MODAL --------- */
+.modal-detalhes-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #0008;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.18s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-detalhes {
+  background: #fff;
+  padding: 28px 30px;
+  border-radius: 16px;
+  width: 430px;
+  max-width: 98vw;
+  box-shadow: 0 4px 32px #0002;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: popup 0.16s;
+}
+
+@keyframes popup {
+  from { transform: scale(0.92);}
+  to { transform: scale(1);}
+}
+
+.modal-detalhes h3 {
+  margin: 0 0 8px 0;
+  color: #1b437d;
+  font-size: 1.22rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.modal-detalhes label {
+  font-size: 1rem;
+  color: #264569;
+  font-weight: 500;
+  margin-bottom: 3px;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-detalhes textarea,
+.modal-detalhes input[type="text"],
+.modal-detalhes input[type="date"],
+.modal-detalhes select {
+  width: 100%;
+  border: 1px solid #b8b8b8;
+  border-radius: 8px;
+  padding: 7px 10px;
+  margin-top: 3px;
+  font-size: 1rem;
+  background: #f8fafc;
+  resize: vertical;
+}
+
+.modal-detalhes textarea {
+  min-height: 44px;
+  max-height: 160px;
+}
+
+.modal-detalhes button {
+  background: #1864ab;
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  padding: 8px 20px;
+  font-size: 1rem;
+  margin-right: 4px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-detalhes button[disabled] {
+  background: #b8d1f7;
+  color: #fff;
+  cursor: not-allowed;
+}
+
+.modal-detalhes button:last-child {
+  background: #888;
+  margin-left: 8px;
+}
+
+.modal-detalhes input[type="text"]:focus,
+.modal-detalhes textarea:focus,
+.modal-detalhes input[type="date"]:focus,
+.modal-detalhes select:focus {
+  outline: 2px solid #357fd6;
+  background: #f2f7fe;
+}
+
+/* Extra para total de votos */
+.tabela-materias td[style*="font-weight: bold"] {
+  font-size: 1.09rem !important;
+  letter-spacing: 0.5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d8e5f8;
+  border-radius: 9px;
+}
+::-webkit-scrollbar {
+  background: #f8fafc;
+  width: 8px;
+}

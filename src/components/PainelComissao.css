@@ -1,0 +1,128 @@
+.painel-comissao-bg {
+  background: #f5f7fa;
+  min-height: 100vh;
+  padding: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.painel-comissao-container {
+  width: 98%;
+  max-width: 1220px;
+  background: #fff;
+  margin: 30px auto;
+  border-radius: 12px;
+  box-shadow: 0 3px 16px #0001;
+  padding: 32px 28px 32px 28px;
+}
+.titulo-painel {
+  margin-bottom: 20px;
+  font-size: 2.1rem;
+  color: #1b396a;
+  font-weight: bold;
+  text-align: left;
+}
+.abas-comissao {
+  margin-bottom: 15px;
+}
+.aba {
+  padding: 8px 18px;
+  font-size: 1.1rem;
+  margin-right: 10px;
+  border: 1px solid #1b396a;
+  border-radius: 8px 8px 0 0;
+  background: #fff;
+  color: #1b396a;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.aba.ativa {
+  background: #1b396a;
+  color: #fff;
+}
+.filtros-topo {
+  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tabela-scroll {
+  overflow-x: auto;
+  margin-bottom: 22px;
+  border-radius: 6px;
+  border: 1px solid #dde1e6;
+}
+.tabela-materias {
+  width: 100%;
+  min-width: 1100px;
+  background: #fafbfc;
+  border-collapse: collapse;
+}
+.tabela-materias th, .tabela-materias td {
+  border: 1px solid #dde1e6;
+  padding: 8px 10px;
+  font-size: 15px;
+  text-align: left;
+}
+.tabela-materias th {
+  background: #e5e9f2;
+  font-weight: bold;
+}
+.tabela-materias tr:nth-child(even) {
+  background: #f7f8fa;
+}
+.tabela-materias tr:hover {
+  background: #e5effd;
+}
+.tabela-materias textarea {
+  width: 100%;
+  min-height: 38px;
+  resize: vertical;
+}
+.btn-salvar, .btn-encaminhar, .btn-encerrar {
+  background: #1b396a;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 18px;
+  margin-top: 5px;
+  margin-right: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+.btn-encaminhar {
+  background: #069c59;
+}
+.btn-encerrar {
+  background: #d3282b;
+}
+.btn-salvar:disabled, .btn-encaminhar:disabled, .btn-encerrar:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.bloco-materias, .bloco-reunioes {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+.campos-reuniao {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.campos-reuniao input, .campos-reuniao select {
+  font-size: 15px;
+  padding: 7px;
+  border-radius: 5px;
+  border: 1px solid #b9c1cf;
+}
+.campos-reuniao input[type="text"], .campos-reuniao input[type="date"], .campos-reuniao input[type="time"] {
+  min-width: 160px;
+}
+.campos-reuniao select[multiple] {
+  min-width: 220px;
+  min-height: 68px;
+}

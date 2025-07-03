@@ -1,0 +1,49 @@
+.modal-grupo-bg {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+.modal-grupo {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 32px 24px;
+  width: 100%;
+  max-width: 420px;
+}
+.modal-grupo h2 {
+  margin-bottom: 16px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #2d4158;
+}
+.modal-grupo input,
+.modal-grupo select {
+  width: 100%;
+  padding: 8px 12px;
+  margin: 8px 0 16px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.modal-grupo .botoes {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.modal-grupo button {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: #004b8e;
+  color: #fff;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.modal-grupo button:hover {
+  background: #0a3261;
+}

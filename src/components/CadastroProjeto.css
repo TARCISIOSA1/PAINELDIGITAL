@@ -1,0 +1,195 @@
+.cadastroprojeto-container {
+  background: #f8f9fb;
+  padding: 18px 0 50px 0;
+  max-width: 1250px;
+  margin: auto;
+}
+.form-cadastroprojeto {
+  background: #fff;
+  border: 1px solid #d3d7df;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px #eee;
+  padding: 18px 24px 10px 24px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.linha-campos {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.campo-form {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+.campo-form label {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  color: #253046;
+}
+.campo-form input,
+.campo-form select,
+.campo-form textarea {
+  border: 1px solid #bcc5d3;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 14px;
+  background: #fafbfc;
+  margin-bottom: 0;
+  height: 34px;
+}
+.campo-form textarea {
+  min-height: 42px;
+  height: 70px;
+  resize: vertical;
+}
+.botoes-form {
+  text-align: right;
+  margin-top: 12px;
+}
+.botoes-form button {
+  background: #2657a6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  padding: 8px 22px;
+  font-size: 15px;
+  cursor: pointer;
+}
+.topo-institucional-geral {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.logo-camara-institucional {
+  height: 56px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #eee;
+  padding: 2px 7px;
+}
+.nome-camara-grande {
+  font-size: 24px;
+  color: #183c75;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+.table-materias-simples {
+  background: #fff;
+  border: 1px solid #d3d7df;
+  border-radius: 8px;
+  box-shadow: 0 1px 5px #eee;
+  padding: 12px;
+  margin-top: 12px;
+  overflow-x: auto;
+}
+.table-materias-simples table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.table-materias-simples th, .table-materias-simples td {
+  border-bottom: 1px solid #e6e6e6;
+  padding: 8px 6px;
+  vertical-align: top;
+}
+.table-materias-simples th {
+  background: #f6f8fb;
+  font-weight: 600;
+  color: #23395d;
+  text-align: left;
+}
+.table-materias-simples td {
+  background: #fff;
+}
+.btn-tabela {
+  background: #ececec;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-right: 6px;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.btn-tabela:hover {
+  background: #d6e3fa;
+  color: #1956a7;
+}
+.status-materia {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 14px;
+  background: #f6f8fa;
+  color: #1d365d;
+  display: inline-block;
+}
+.status-votada {
+  background: #32c657;
+  color: #fff !important;
+}
+.status-em-análise {
+  background: #d7eafd;
+  color: #174063;
+}
+.status-em-comissão {
+  background: #ffefd6;
+  color: #a88900;
+}
+.status-em-jurídico {
+  background: #ffe0e0;
+  color: #b80000;
+}
+.status-em-pauta {
+  background: #dde2fa;
+  color: #2643b8;
+}
+.status-primeira-votação {
+  background: #d3f3c2;
+  color: #296d22;
+}
+.status-segunda-votação {
+  background: #e0e7fa;
+  color: #2b457d;
+}
+.status-em-votação {
+  background: #fffab3;
+  color: #9b7e00;
+}
+.tag-intersticio {
+  display: inline-block;
+  background: #eab308;
+  color: #222;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 8px;
+  margin-top: 3px;
+  margin-left: 2px;
+}
+.filtro-materias {
+  margin: 24px 0 5px 0;
+}
+.topo-institucional-geral.centralizar-topo {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+.logo-camara-institucional {
+  margin: 0 0 6px 0;
+}
+.nomes-institucional {
+  justify-content: center;
+  align-items: center;
+}
