@@ -6,9 +6,15 @@ const admin = require('firebase-admin');
 const axios = require('axios');
 
 // =================== ATENÇÃO ===================
-// Troque pelo caminho do seu JSON do Firebase Admin
-const serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
-// ===============================================
+// Inicialização universal do Firebase Admin
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // No deploy/cloud: variável de ambiente base64
+  serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8'));
+} else {
+  // Local: arquivo json
+  serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
