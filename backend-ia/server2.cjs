@@ -10,7 +10,13 @@ const axios = require('axios');
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // No deploy/cloud: variável de ambiente base64
+let serviceAccount = {};
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8'));
+} else {
+  throw new Error("FIREBASE_SERVICE_ACCOUNT não definido! Adicione nas variáveis do Railway.");
+}
+
 } else {
   // Local: arquivo json
   serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
