@@ -7,8 +7,15 @@ const path = require('path');
 const { OpenAI } = require('openai');
 const admin = require('firebase-admin');
 
-// Substitua pelo nome real do seu arquivo JSON do Firebase Admin
-const serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
+// --- Firebase Admin: Universal Initialization ---
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // Em produção/deploy (Railway, Render, etc): variável de ambiente base64
+  serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8'));
+} else {
+  // Local: arquivo json
+  serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
+}
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -61,8 +68,6 @@ app.post('/api/whisper', upload.single('file'), async (req, res) => {
   }
 });
 
-// ========== NOVOS ENDPOINTS PARA ATA FALAS ==========
-
 // 1) SALVAR FALA DA TRIBUNA NA COLEÇÃO atasFalas (SEM CORREÇÃO IA)
 app.post('/api/atasFalas', async (req, res) => {
   const { fala, orador, partido, data, horario, sessaoId } = req.body;
@@ -114,8 +119,6 @@ app.post('/api/atasFalas/gerarAtaCorrigida', async (req, res) => {
     res.status(500).json({ error: "Erro ao gerar ata corrigida" });
   }
 });
-
-// ========== SEUS ENDPOINTS EXISTENTES ==========
 
 // Endpoint para listar atas com filtros (período, sessão)
 app.post('/api/atas', async (req, res) => {
