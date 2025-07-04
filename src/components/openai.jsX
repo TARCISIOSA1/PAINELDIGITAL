@@ -4,7 +4,7 @@ export async function corrigirTextoPorIA(textoOriginal) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer SUA_CHAVE_OPENAI_AQUI",
+      Authorization: `Bearer ${process.env.REACT_APP_OPENAI_KEY}`,
     },
     body: JSON.stringify({
       model: "gpt-4",
