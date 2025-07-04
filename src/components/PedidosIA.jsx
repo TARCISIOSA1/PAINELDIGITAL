@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import TopoInstitucional from './TopoInstitucional'; // ajuste o caminho conforme seu projeto
 
-const API_URL = process.env.REACT_APP_API_URL; // Use a variável do ambiente (Vercel)
+const API_URL = import.meta.env.VITE_API_URL; // Use a variável do ambiente (Vercel)
 
 export default function PedidosIA() {
   const [periodoInicio, setPeriodoInicio] = useState('');
