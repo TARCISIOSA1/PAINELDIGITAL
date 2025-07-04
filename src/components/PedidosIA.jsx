@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import TopoInstitucional from './TopoInstitucional'; // ajuste o caminho conforme seu projeto
 
+const API_URL = process.env.REACT_APP_API_URL; // Use a variável do ambiente (Vercel)
+
 export default function PedidosIA() {
   const [periodoInicio, setPeriodoInicio] = useState('');
   const [periodoFim, setPeriodoFim] = useState('');
@@ -11,8 +13,9 @@ export default function PedidosIA() {
   const [atas, setAtas] = useState([]);
   const [carregando, setCarregando] = useState(false);
 
+  // Carrega sessões do backend já usando o endereço certo
   useEffect(() => {
-    fetch('http://localhost:3334/api/sessoes')
+    fetch(`${API_URL}/api/sessoes`)
       .then(res => res.json())
       .then(data => {
         if (data.sessoes) setSessoes(data.sessoes);
@@ -24,7 +27,7 @@ export default function PedidosIA() {
     setCarregando(true);
     try {
       const body = { periodoInicio, periodoFim, sessaoId };
-      const res = await fetch('http://localhost:3334/api/atas', {
+      const res = await fetch(`${API_URL}/api/atas`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -45,7 +48,7 @@ export default function PedidosIA() {
     setCarregando(true);
     setResposta('');
     try {
-      const res = await fetch('http://localhost:3334/api/pergunte', {
+      const res = await fetch(`${API_URL}/api/pergunte`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pergunta }),
@@ -69,7 +72,7 @@ export default function PedidosIA() {
         titulo: "Relatório Legislativo",
         texto: resposta,
       };
-      const res = await fetch('http://localhost:3334/api/gerarPdf', {
+      const res = await fetch(`${API_URL}/api/gerarPdf`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dados),
