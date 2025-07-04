@@ -1,9 +1,9 @@
 {
-  "name": "legenda-server",
+  "name": "ia-server",
   "version": "1.0.0",
-  "main": "server.cjs",
+  "main": "server2.cjs",
   "scripts": {
-    "start": "node server.cjs"
+    "start": "node server2.cjs"
   },
   "keywords": [],
   "author": "",
