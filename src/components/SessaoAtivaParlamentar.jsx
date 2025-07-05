@@ -30,7 +30,6 @@ export default function SessaoAtivaParlamentar() {
     let unsubscribe = null;
     setCarregando(true);
     setErro("");
-
     const auth = getAuth();
 
     unsubscribe = onAuthStateChanged(auth, async (authUser) => {
@@ -52,6 +51,7 @@ export default function SessaoAtivaParlamentar() {
         const userDoc = snap.docs[0];
         const userData = { id: userDoc.id, ...userDoc.data() };
 
+        // Permite só vereadores votarem
         if (
           !["vereador", "Vereador", "VEREADOR"].includes(
             (userData.tipoUsuario || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -75,25 +75,17 @@ export default function SessaoAtivaParlamentar() {
           return;
         }
 
-        // Busca presença do usuário na sessão ativa
-        const presencasSnap = await getDocs(
-          collection(db, "sessoes", sessaoAtiva.id, "presencas")
-        );
-        const presencaDoc = presencasSnap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .find(
-            (p) =>
-              p.vereador_id === userData.uid ||
-              p.vereador_id === userDoc.id
-          );
-        if (
-          !presencaDoc ||
-          !presencaDoc.presente ||
-          !presencaDoc.habilitado
-        ) {
-          setErro(
-            "Você não está habilitado para votar nesta sessão (verifique presença e habilitação com a Mesa Diretora)."
-          );
+        // Busca presença do usuário na sessão ativa - CORRIGIDO!
+        const presencaRef = doc(db, "sessoes", sessaoAtiva.id, "presencas", userDoc.id);
+        const presencaSnap = await getDoc(presencaRef);
+        if (!presencaSnap.exists()) {
+          setErro("Você não registrou presença nesta sessão.");
+          setCarregando(false);
+          return;
+        }
+        const presencaDoc = presencaSnap.data();
+        if (!presencaDoc.presente || !presencaDoc.habilitado) {
+          setErro("Você não está habilitado para votar nesta sessão (verifique presença e habilitação com a Mesa Diretora).");
           setPresenca(null);
           setCarregando(false);
           return;
