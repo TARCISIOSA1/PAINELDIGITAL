@@ -127,3 +127,50 @@
     font-size: 13px;
   }
 }
+.footer-institucional {
+  width: 100vw;
+  background: linear-gradient(90deg, #23303f 0%, #319fff 100%);
+  color: #fff;
+  padding: 32px 0 16px 0;
+  text-align: center;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 20;
+  box-shadow: 0 -2px 18px rgba(20,20,20,0.15);
+  font-size: 1.22rem;
+  font-weight: 600;
+  border-top: 4px solid #e5e7ea;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 32px;
+}
+
+.footer-logo {
+  height: 48px;
+  width: auto;
+  margin-right: 12px;
+  filter: drop-shadow(0 2px 4px rgba(30,80,180,0.2));
+  background: transparent;
+  border-radius: 6px;
+}
+
+@media (max-width: 800px) {
+  .footer-content {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .footer-logo {
+    height: 38px;
+    margin: 0 0 5px 0;
+  }
+  .footer-institucional {
+    font-size: 1rem;
+    padding: 22px 0 12px 0;
+  }
+}
