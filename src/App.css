@@ -1,171 +1,140 @@
 body {
   margin: 0;
-  background: #f5f6fa;
-  font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-  color: #212a36;
+  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+  background: #fff;
+  color: #1a1a1a;
 }
 
+/* Topo com degrade azul */
 .header {
-  background: #fff;
-  padding: 14px 28px 8px 28px;
+  background: linear-gradient(90deg, #123c7a 0%, #187ae5 100%);
+  padding: 10px 20px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  box-shadow: 0 2px 12px rgba(30,40,90,0.06);
 }
 
 .header img.logo {
-  height: 44px;
+  height: 48px;
+  object-fit: contain;
 }
 
+/* Navegação */
 .nav-wrapper {
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(30,40,90,0.03);
-  position: sticky;
-  top: 0;
-  z-index: 999;
+  background: linear-gradient(90deg, #154076 0%, #258fff 100%);
+  border-bottom: 2px solid #2164a5;
 }
 
 .nav-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  padding: 0 14px;
-  border-bottom: 1.5px solid #e8eaf0;
-  background: #fff;
-  min-height: 54px;
+  gap: 12px;
+  padding: 8px 20px;
 }
 
-.menu-item, .nav-link {
-  display: flex;
-  align-items: center;
-  font-size: 1.05rem;
-  height: 54px;
-}
-
-.nav-link {
-  color: #314465;
-  padding: 0 18px;
-  border: none;
-  background: none;
-  border-bottom: 3px solid transparent;
-  font-weight: 500;
-  text-decoration: none;
-  transition: all .17s;
-  border-radius: 0;
+.menu-item {
   position: relative;
+  display: inline-block;
 }
 
-.nav-link.active, .nav-link:focus, .nav-link:hover {
-  color: #1856ea;
-  border-bottom: 3px solid #1856ea;
-  background: #f4f8ff;
-}
-
-.menu-item .dropdown-toggle {
-  color: #314465;
-  background: none;
+.dropdown-toggle {
+  background: #185fa4;
+  color: #fff;
   border: none;
-  padding: 0 18px;
-  font-size: 1.05rem;
-  font-weight: 500;
-  height: 54px;
+  font-weight: bold;
+  padding: 9px 18px;
+  border-radius: 7px 7px 0 0;
   cursor: pointer;
-  border-bottom: 3px solid transparent;
-  transition: color 0.2s, border-bottom 0.2s;
+  margin-right: 6px;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(20,60,150,0.05);
+  transition: background .15s;
 }
-.menu-item .dropdown-toggle:hover,
-.menu-item .dropdown-toggle:focus {
-  color: #1856ea;
-  background: #f4f8ff;
-  border-bottom: 3px solid #1856ea;
+.dropdown-toggle:hover,
+.dropdown-toggle:focus {
+  background: #258fff;
+  color: #fff;
 }
 
-.menu-item .dropdown-menu {
+.dropdown-menu {
   position: absolute;
   left: 0;
-  top: 56px;
-  min-width: 170px;
-  background: #fff;
-  box-shadow: 0 6px 16px rgba(70,110,170,0.14);
-  border-radius: 9px;
-  z-index: 999;
-  padding: 10px 0;
+  top: 100%;
+  background: #185fa4;
+  border-radius: 7px;
+  z-index: 9999;
+  min-width: 180px;
+  box-shadow: 0 2px 8px rgba(24,87,180,0.10);
   margin-top: 2px;
-  animation: fadein .17s;
-}
-
-@keyframes fadein {
-  from { opacity: 0; transform: translateY(-12px);}
-  to   { opacity: 1; transform: translateY(0);}
+  pointer-events: auto;
+  padding: 6px 0;
 }
 
 .dropdown-link {
-  color: #374060;
-  text-decoration: none;
+  color: #e2f0ff;
+  padding: 11px 18px;
   display: block;
-  padding: 12px 22px;
-  font-size: 1rem;
-  font-weight: 500;
-  border-radius: 5px;
-  transition: background .14s, color .16s;
+  text-decoration: none;
+  border: none;
+  font-weight: bold;
   background: none;
+  transition: background .14s, color .13s;
+  cursor: pointer;
 }
 .dropdown-link:hover {
-  background: #eaf2ff;
-  color: #1856ea;
+  background: #258fff;
+  color: #fff;
 }
 
+.nav-link {
+  color: #e2f0ff;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background-color: #185fa4;
+  transition: background 0.2s, color .16s;
+  font-weight: bold;
+  border: none;
+}
+
+.nav-link:hover,
+.nav-link.active {
+  background: #258fff;
+  color: #fff;
+}
+
+/* Conteúdo da página */
 .page {
-  background: #f5f6fa;
-  padding: 0 0 40px 0;
-  min-height: 100vh;
-}
-
-footer, .footer-institucional {
-  width: 100vw;
   background: #fff;
-  color: #314465;
+  color: #1a1a1a;
+  padding: 0;
+  min-height: 100vh;
+  border-radius: 0;
+  width: 100vw;
+}
+
+/* Rodapé degradê azul-prata */
+footer {
+  background: #185fa4;
+  color: #d6ecff;
+  padding: 14px 0 8px 0;
   text-align: center;
-  padding: 22px 0 10px 0;
-  font-size: 1.06rem;
   font-weight: 500;
-  box-shadow: 0 -2px 8px rgba(30,40,90,0.03);
-  margin-top: 30px;
+  font-size: 15px;
+  letter-spacing: 1px;
+  margin-top: 28px;
 }
-
-@media (max-width: 800px) {
-  .nav-bar {
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 0 6px;
-    font-size: 0.99rem;
-  }
-  .nav-link, .menu-item .dropdown-toggle {
-    padding: 0 12px;
-    font-size: 0.97rem;
-    height: 44px;
-  }
-  .header {
-    padding: 10px 10px 4px 10px;
-  }
-}
-
-@media (max-width: 600px) {
-  .header img.logo { height: 30px; }
-  .nav-bar {
-    flex-direction: column;
-    align-items: flex-start;
-    min-height: unset;
-    gap: 0;
-  }
-  .nav-link, .menu-item .dropdown-toggle {
-    height: 40px;
-    padding: 0 10px;
-    font-size: 0.95rem;
-  }
-  .footer-institucional {
-    font-size: 0.95rem;
-    padding: 13px 0 6px 0;
-  }
+.footer-institucional {
+  width: 100vw;
+  background: linear-gradient(90deg, #3c6180 0%, #b4c4dd 100%);
+  color: #1b365d;
+  padding: 18px 0 8px 0;
+  text-align: center;
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  z-index: 5;
+  box-shadow: 0 -1px 12px rgba(20,60,150,0.10);
+  font-size: 1.08rem;
+  letter-spacing: 1px;
 }
