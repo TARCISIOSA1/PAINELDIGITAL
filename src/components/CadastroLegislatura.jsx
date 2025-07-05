@@ -10,7 +10,7 @@ import {
 import { db } from "../firebase";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import TopoInstitucional from "./TopoInstitucional"; // Importa o topo institucional
+import TopoInstitucional from "./TopoInstitucional";
 import "./CadastroLegislatura.css";
 
 export default function CadastroLegislatura() {
@@ -87,8 +87,10 @@ export default function CadastroLegislatura() {
   };
 
   const excluirLegislatura = async (id) => {
-    await deleteDoc(doc(db, "legislaturas", id));
-    carregarLegislaturas();
+    if (window.confirm("Confirma a exclusão?")) {
+      await deleteDoc(doc(db, "legislaturas", id));
+      carregarLegislaturas();
+    }
   };
 
   const exportarPDF = () => {
@@ -111,29 +113,39 @@ export default function CadastroLegislatura() {
     docPDF.save("legislaturas.pdf");
   };
 
+  // --- Responsivo: Table container para rolagem horizontal no mobile
   return (
     <>
       <TopoInstitucional />
-      <div className="container-legislatura" style={{ paddingTop: "100px" }}>
+      <div className="container-legislatura" style={{ paddingTop: 36 }}>
         <h2>Cadastro de Legislatura</h2>
 
-        <div className="form-legislatura">
+        <form
+          className="form-legislatura"
+          onSubmit={(e) => {
+            e.preventDefault();
+            salvarLegislatura();
+          }}
+        >
           <input
             value={numero}
             onChange={(e) => setNumero(e.target.value)}
             placeholder="Número da Legislatura"
+            required
           />
           <input
             value={anoInicio}
             onChange={(e) => setAnoInicio(e.target.value)}
             placeholder="Ano de Início"
             type="number"
+            required
           />
           <input
             value={anoTermino}
             onChange={(e) => setAnoTermino(e.target.value)}
             placeholder="Ano de Término"
             type="number"
+            required
           />
           <input
             type="date"
@@ -151,6 +163,7 @@ export default function CadastroLegislatura() {
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Descrição"
+            style={{ minWidth: 120, minHeight: 38, resize: "vertical" }}
           />
           <input
             value={presidente}
@@ -161,68 +174,98 @@ export default function CadastroLegislatura() {
             <option>Ativa</option>
             <option>Encerrada</option>
           </select>
-          <button onClick={salvarLegislatura}>
+          <button type="submit">
             {editandoId ? "Atualizar" : "Salvar"}
           </button>
-          <button onClick={limparCampos}>Limpar</button>
-          <button onClick={exportarPDF}>Exportar PDF</button>
-        </div>
+          <button type="button" onClick={limparCampos}>Limpar</button>
+          <button type="button" onClick={exportarPDF}>Exportar PDF</button>
+        </form>
 
         <h3>Legislaturas Registradas</h3>
 
-        <div style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+        <div style={{ marginBottom: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
           <select onChange={(e) => setFiltroStatus(e.target.value)}>
             <option value="">Todos os Status</option>
             <option value="Ativa">Ativa</option>
             <option value="Encerrada">Encerrada</option>
           </select>
-
           <input
             type="number"
             placeholder="Filtrar por Ano de Início"
             onChange={(e) => setFiltroAno(e.target.value)}
+            style={{ maxWidth: 170 }}
           />
         </div>
 
-        <table>
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Número</th>
-              <th>Início</th>
-              <th>Término</th>
-              <th>Status</th>
-              <th>Presidente</th>
-              <th>Data Início</th>
-              <th>Data Fim</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            {legislaturas
-              .filter(
-                (l) =>
-                  (!filtroStatus || l.status === filtroStatus) &&
-                  (!filtroAno || String(l.anoInicio).includes(filtroAno))
-              )
-              .map((l) => (
-                <tr key={l.id}>
-                  <td>{l.id}</td>
-                  <td>{l.numero}</td>
-                  <td>{l.anoInicio}</td>
-                  <td>{l.anoTermino}</td>
-                  <td>{l.status}</td>
-                  <td>{l.presidente}</td>
-                  <td>{l.dataInicio || "-"}</td>
-                  <td>{l.dataFim || "-"}</td>
-                  <td>
-                    <button onClick={() => editarLegislatura(l)}>Editar</button>
-                    <button onClick={() => excluirLegislatura(l.id)}>Excluir</button>
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
+        {/* --- Wrapper p/ tabela rolar no mobile --- */}
+        <div style={{ width: "100%", overflowX: "auto", background: "#fff", borderRadius: 12 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Número</th>
+                <th>Início</th>
+                <th>Término</th>
+                <th>Status</th>
+                <th>Presidente</th>
+                <th>Data Início</th>
+                <th>Data Fim</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {legislaturas
+                .filter(
+                  (l) =>
+                    (!filtroStatus || l.status === filtroStatus) &&
+                    (!filtroAno || String(l.anoInicio).includes(filtroAno))
+                )
+                .map((l) => (
+                  <tr key={l.id}>
+                    <td>{l.id}</td>
+                    <td>{l.numero}</td>
+                    <td>{l.anoInicio}</td>
+                    <td>{l.anoTermino}</td>
+                    <td>{l.status}</td>
+                    <td>{l.presidente}</td>
+                    <td>{l.dataInicio || "-"}</td>
+                    <td>{l.dataFim || "-"}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => editarLegislatura(l)}
+                        style={{
+                          background: "#2a68c6",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 5,
+                          padding: "4px 10px",
+                          marginRight: 2,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => excluirLegislatura(l.id)}
+                        style={{
+                          background: "#d14a4a",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 5,
+                          padding: "4px 10px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </>
   );
