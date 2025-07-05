@@ -1,3 +1,4 @@
+// src/components/CadastroParlamentar.jsx
 import React, { useState, useEffect } from "react";
 import {
   collection,
@@ -35,6 +36,7 @@ export default function CadastroParlamentar() {
     status: "Ativo",
     biografia: "",
     foto: "",
+    uid: "", // <- ADICIONADO!
   });
 
   const [fotoFile, setFotoFile] = useState(null);
@@ -63,6 +65,7 @@ export default function CadastroParlamentar() {
     setUsuarios(lista);
   };
 
+  // Quando selecionar um usuário, puxa os dados e o UID
   const preencherCamposDoUsuario = (id) => {
     setUsuarioSelecionado(id);
     const user = usuarios.find((u) => u.id === id);
@@ -79,6 +82,7 @@ export default function CadastroParlamentar() {
         tipoUsuario: user.tipoUsuario || "Vereador",
         votos: user.votos || "",
         foto: user.foto || "",
+        uid: user.uid || "", // <- ESSENCIAL: Salva UID!
       }));
     }
   };
@@ -98,6 +102,11 @@ export default function CadastroParlamentar() {
   const salvarParlamentar = async () => {
     const urlFoto = await handleUploadFoto();
     const dados = { ...form, foto: urlFoto };
+
+    if (!dados.uid) {
+      alert("Selecione um usuário para vincular o UID do parlamentar!");
+      return;
+    }
 
     if (editandoId) {
       await updateDoc(doc(db, "parlamentares", editandoId), dados);
@@ -121,6 +130,7 @@ export default function CadastroParlamentar() {
       status: "Ativo",
       biografia: "",
       foto: "",
+      uid: "", // <- limpa o UID também
     });
     setFotoFile(null);
     setUsuarioSelecionado("");
@@ -159,8 +169,8 @@ export default function CadastroParlamentar() {
   };
 
   const gerarPDF = async () => {
-    const doc = new jsPDF();
-    doc.text("Relatório de Parlamentares Filtrados", 14, 15);
+    const docPDF = new jsPDF();
+    docPDF.text("Relatório de Parlamentares Filtrados", 14, 15);
 
     const filtrados = parlamentares.filter((p) =>
       p.nome?.toLowerCase().includes(filtroNome.toLowerCase()) &&
@@ -183,13 +193,13 @@ export default function CadastroParlamentar() {
       ]);
     }
 
-    autoTable(doc, {
+    autoTable(docPDF, {
       startY: 25,
       head: [["Foto", "Nome", "Número", "Partido", "Votos", "Status", "Biografia"]],
       body: dadosTabela,
       didDrawCell: async (data) => {
         if (data.column.index === 0 && data.cell.raw) {
-          doc.addImage(data.cell.raw, "JPEG", data.cell.x + 1, data.cell.y + 1, 10, 10);
+          docPDF.addImage(data.cell.raw, "JPEG", data.cell.x + 1, data.cell.y + 1, 10, 10);
         }
       },
       columnStyles: {
@@ -203,7 +213,7 @@ export default function CadastroParlamentar() {
       },
     });
 
-    doc.save("parlamentares-filtrados.pdf");
+    docPDF.save("parlamentares-filtrados.pdf");
   };
 
   // PAGINAÇÃO
@@ -305,7 +315,7 @@ export default function CadastroParlamentar() {
             setForm({
               nome: "", numero: "", numeroPartido: "", partido: "", votos: "",
               telefone: "", email: "", sexo: "", tipoUsuario: "Vereador",
-              status: "Ativo", biografia: "", foto: ""
+              status: "Ativo", biografia: "", foto: "", uid: ""
             });
             setFotoFile(null);
             setUsuarioSelecionado("");
