@@ -38,7 +38,8 @@ const TELAS = [
   "AlterarSenha",
  "ConsultaPublica",
 "GerenciarConsultaPublica",
- "CentralConsulta" 
+ "CentralConsulta"
+ "PainelParlamentar",
 ];
 
 // ---- DICIONÁRIO PARA EXIBIÇÃO BONITA ----
@@ -73,6 +74,7 @@ const TELAS_LABEL = {
   ConsultaPublica: "Consulta Pública",
   GerenciarConsultaPublica: "Gerenciar Consulta Pública",
   CentralConsulta: "Central de Consulta",
+   PainelParlamentar: "Painel Parlamentar",
 };
 
 const TIPOS_USUARIO = [
