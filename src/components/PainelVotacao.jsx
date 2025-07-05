@@ -214,16 +214,26 @@ export default function PainelVotacaoIA() {
     };
   };
 
-  // Gera Ata em PDF
-  const gerarAtaPDF = () => {
-    // ... (implemente aqui se desejar)
-  };
-
   const dadosGrafico = gerarDadosGrafico();
 
-  // === TELA BRANCA quando não houver sessão ativa ===
+  // === TELA BRANCA COM MENSAGEM quando não houver sessão ativa ===
   if (!dadosPainel) {
-    return <div style={{ background: "#fff", minHeight: "100vh" }} />;
+    return (
+      <div style={{
+        background: "#fff",
+        minHeight: "100vh",
+        width: "100vw",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "1.4rem",
+        color: "#283955",
+        fontWeight: 500,
+        textAlign: "center"
+      }}>
+        Aguardando início da sessão...
+      </div>
+    );
   }
 
   // ======= RESTANTE DO PAINEL =======
@@ -243,7 +253,6 @@ export default function PainelVotacaoIA() {
 
   return (
     <div className="painel-ia-container" ref={containerRef}>
-      {/* BOTÃO TELA CHEIA */}
       <button className="btn-tela-cheia" onClick={entrarTelaCheia} title="Tela Cheia">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
           <path d="M9 3H5a2 2 0 0 0-2 2v4m12-6h4a2 2 0 0 1 2 2v4m0 6v4a2 2 0 0 1-2 2h-4m-6 6H5a2 2 0 0 1-2-2v-4"
