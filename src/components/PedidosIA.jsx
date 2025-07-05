@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import TopoInstitucional from './TopoInstitucional'; // ajuste o caminho conforme seu projeto
 
-const API_URL = import.meta.env.VITE_API_URL; // Use a variável do ambiente (Vercel)
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function PedidosIA() {
   const [periodoInicio, setPeriodoInicio] = useState('');
@@ -13,7 +12,6 @@ export default function PedidosIA() {
   const [atas, setAtas] = useState([]);
   const [carregando, setCarregando] = useState(false);
 
-  // Carrega sessões do backend já usando o endereço certo
   useEffect(() => {
     fetch(`${API_URL}/api/sessoes`)
       .then(res => res.json())
@@ -56,7 +54,6 @@ export default function PedidosIA() {
       const data = await res.json();
       setResposta(data.resposta || 'Sem resposta da IA.');
     } catch (err) {
-      console.error('Erro na pergunta para IA:', err);
       setResposta('Erro ao consultar a IA.');
     }
     setCarregando(false);
@@ -96,38 +93,31 @@ export default function PedidosIA() {
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: 'auto', padding: 20, fontFamily: 'Arial, sans-serif' }}>
-      <TopoInstitucional />
+    <div className="pedidosia-container">
+      <h2 className="pedidosia-title">Consulta Inteligente Legislativa (IA)</h2>
 
-      <h2 style={{ textAlign: 'center', margin: '20px 0' }}>Consulta Inteligente Legislativa (IA)</h2>
-
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 20 }}>
+      <div className="pedidosia-filtros">
         <div>
-          <label>Período Início: </label>
+          <label>Período Início:</label>
           <input
             type="date"
             value={periodoInicio}
             onChange={e => setPeriodoInicio(e.target.value)}
-            style={{ padding: 6, fontSize: 14 }}
           />
         </div>
-
         <div>
-          <label>Período Fim: </label>
+          <label>Período Fim:</label>
           <input
             type="date"
             value={periodoFim}
             onChange={e => setPeriodoFim(e.target.value)}
-            style={{ padding: 6, fontSize: 14 }}
           />
         </div>
-
         <div>
-          <label>Sessão Legislativa: </label>
+          <label>Sessão Legislativa:</label>
           <select
             value={sessaoId}
             onChange={e => setSessaoId(e.target.value)}
-            style={{ padding: 6, fontSize: 14, minWidth: 180 }}
           >
             <option value="">Todas</option>
             {sessoes.map(s => (
@@ -137,16 +127,9 @@ export default function PedidosIA() {
             ))}
           </select>
         </div>
-
         <button
           onClick={buscarAtas}
           disabled={carregando}
-          style={{
-            height: 34,
-            marginTop: 20,
-            cursor: carregando ? 'not-allowed' : 'pointer',
-            padding: '0 15px',
-          }}
         >
           {carregando ? 'Buscando atas...' : 'Buscar Atas'}
         </button>
@@ -155,9 +138,9 @@ export default function PedidosIA() {
       <div>
         <h3>Atas encontradas:</h3>
         {atas.length === 0 && <p>Nenhuma ata encontrada.</p>}
-        <ul>
+        <ul className="pedidosia-atas-lista">
           {atas.map(a => (
-            <li key={a.id} style={{ marginBottom: 6 }}>
+            <li key={a.id}>
               <strong>{a.data}</strong> — {a.texto?.slice(0, 150) || ''}...
             </li>
           ))}
@@ -166,58 +149,24 @@ export default function PedidosIA() {
 
       <hr style={{ margin: '30px 0' }} />
 
-      <div style={{ textAlign: 'center' }}>
+      <div className="pedidosia-pergunta">
         <h3>Pergunte à IA sobre qualquer dado do sistema</h3>
         <textarea
           rows={5}
           value={pergunta}
           onChange={e => setPergunta(e.target.value)}
           placeholder="Digite sua pergunta aqui..."
-          style={{
-            width: '90%',
-            maxWidth: 700,
-            padding: 10,
-            fontSize: 16,
-            borderRadius: 8,
-            border: '1px solid #ccc',
-            resize: 'vertical',
-            marginTop: 10,
-            minHeight: 100,
-          }}
         />
         <br />
         <button
           onClick={enviarPergunta}
           disabled={carregando}
-          style={{
-            marginTop: 15,
-            padding: '10px 25px',
-            fontSize: 16,
-            borderRadius: 6,
-            border: 'none',
-            backgroundColor: '#007bff',
-            color: '#fff',
-            cursor: carregando ? 'not-allowed' : 'pointer',
-          }}
         >
           {carregando ? 'Consultando IA...' : 'Perguntar'}
         </button>
       </div>
 
-      <div
-        style={{
-          marginTop: 25,
-          background: '#eef3fb',
-          borderRadius: 10,
-          minHeight: 60,
-          padding: 15,
-          fontFamily: 'monospace',
-          whiteSpace: 'pre-line',
-          maxWidth: 800,
-          marginLeft: 'auto',
-          marginRight: 'auto',
-        }}
-      >
+      <div className="pedidosia-resposta">
         {resposta || 'Aqui aparecerá a resposta da IA...'}
       </div>
 
@@ -225,20 +174,144 @@ export default function PedidosIA() {
         <div style={{ textAlign: 'center', marginTop: 15 }}>
           <button
             onClick={gerarPdf}
-            style={{
-              padding: '10px 30px',
-              fontSize: 16,
-              borderRadius: 6,
-              border: 'none',
-              backgroundColor: '#28a745',
-              color: '#fff',
-              cursor: 'pointer',
-            }}
+            className="pedidosia-pdf-btn"
           >
             Gerar PDF
           </button>
         </div>
       )}
+
+      {/* CSS embutido para responsividade real */}
+      <style>{`
+        .pedidosia-container {
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 20px 8px;
+          font-family: Arial, sans-serif;
+        }
+        .pedidosia-title {
+          text-align: center;
+          font-size: 1.7rem;
+          margin: 18px 0 25px 0;
+        }
+        .pedidosia-filtros {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+        .pedidosia-filtros > div {
+          display: flex;
+          flex-direction: column;
+          min-width: 145px;
+        }
+        .pedidosia-filtros label {
+          font-weight: 600;
+          margin-bottom: 3px;
+        }
+        .pedidosia-filtros input,
+        .pedidosia-filtros select {
+          padding: 6px;
+          font-size: 1rem;
+          border-radius: 7px;
+          border: 1.2px solid #a8b8cc;
+          background: #fff;
+        }
+        .pedidosia-filtros button {
+          align-self: flex-end;
+          margin-top: auto;
+          background: #185aa3;
+          color: #fff;
+          border: none;
+          padding: 8px 17px;
+          border-radius: 7px;
+          font-size: 1rem;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .pedidosia-filtros button:disabled {
+          background: #ccc;
+          color: #fff;
+        }
+        .pedidosia-atas-lista {
+          margin: 8px 0 18px 0;
+          padding-left: 15px;
+          font-size: 1rem;
+        }
+        .pedidosia-pergunta {
+          text-align: center;
+          margin-bottom: 12px;
+        }
+        .pedidosia-pergunta textarea {
+          width: 95%;
+          max-width: 700px;
+          min-height: 80px;
+          font-size: 1rem;
+          border-radius: 9px;
+          padding: 10px;
+          border: 1.2px solid #bbc7da;
+          margin-top: 8px;
+          resize: vertical;
+        }
+        .pedidosia-pergunta button {
+          margin-top: 13px;
+          padding: 10px 25px;
+          font-size: 1.09rem;
+          border-radius: 6px;
+          border: none;
+          background: #007bff;
+          color: #fff;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .pedidosia-pergunta button:disabled {
+          background: #92b2e5;
+        }
+        .pedidosia-resposta {
+          margin: 24px auto 0 auto;
+          background: #eef3fb;
+          border-radius: 10px;
+          min-height: 70px;
+          padding: 18px;
+          font-family: monospace;
+          white-space: pre-line;
+          max-width: 800px;
+          font-size: 1.02rem;
+        }
+        .pedidosia-pdf-btn {
+          padding: 10px 30px;
+          font-size: 1rem;
+          border-radius: 6px;
+          border: none;
+          background-color: #28a745;
+          color: #fff;
+          cursor: pointer;
+          font-weight: 600;
+        }
+        @media (max-width: 750px) {
+          .pedidosia-container {
+            padding: 8px 2vw;
+          }
+          .pedidosia-filtros {
+            gap: 10px;
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .pedidosia-title {
+            font-size: 1.22rem;
+          }
+          .pedidosia-pergunta textarea {
+            width: 100%;
+            max-width: 100vw;
+          }
+          .pedidosia-resposta {
+            max-width: 99vw;
+            padding: 13px 3vw;
+          }
+        }
+      `}</style>
     </div>
   );
 }
