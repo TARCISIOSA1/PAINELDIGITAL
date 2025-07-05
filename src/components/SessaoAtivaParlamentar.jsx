@@ -1,265 +1,226 @@
 import React, { useEffect, useState } from "react";
-import { getAuth, onAuthStateChanged } from "firebase/auth";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  getDoc,
-  updateDoc,
-} from "firebase/firestore";
 import TopoInstitucional from "./TopoInstitucional";
-import PainelVotacao from "./PainelVotacao";
 import "./SessaoAtivaParlamentar.css";
 
-export default function SessaoAtivaParlamentar() {
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
-  const [parlamentar, setParlamentar] = useState(null);
-  const [sessaoAtiva, setSessaoAtiva] = useState(null);
-  const [votacaoAtual, setVotacaoAtual] = useState(null);
-  const [votoAtual, setVotoAtual] = useState("");
-  const [senhaModal, setSenhaModal] = useState(false);
-  const [senha, setSenha] = useState("");
-  const [novoVoto, setNovoVoto] = useState("");
-  const [votoProcessando, setVotoProcessando] = useState(false);
+const getUsuarioLogado = () => {
+  return {
+    id: localStorage.getItem("id"),
+    nome: localStorage.getItem("nome"),
+    partido: localStorage.getItem("partido"),
+    foto: localStorage.getItem("foto"),
+    tipo: localStorage.getItem("tipo"),
+  };
+};
 
-  // MONTA tudo na autenticação
+export default function SessaoAtivaParlamentar() {
+  const usuario = getUsuarioLogado();
+  const [painel, setPainel] = useState(null);
+  const [voto, setVoto] = useState("");
+  const [status, setStatus] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  // Controle do modal de confirmação de alteração de voto
+  const [modalConfirm, setModalConfirm] = useState({
+    exibir: false,
+    etapa: 1,
+    votoNovo: "",
+  });
+
   useEffect(() => {
-    setCarregando(true);
-    setErro("");
-    const auth = getAuth();
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setErro("Faça login para votar.");
-        setCarregando(false);
+    const ref = doc(db, "painelAtivo", "ativo");
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) {
+        setPainel(null);
         return;
       }
-      try {
-        // Busca parlamentar
-        const snap = await getDocs(
-          query(collection(db, "parlamentares"), where("email", "==", user.email))
+      const data = snap.data();
+      setPainel(data);
+
+      if (data.votacaoAtual?.votos && usuario.id) {
+        const votos = data.votacaoAtual.votos;
+        const votoAtual = Object.values(votos).find(
+          (v) => v.vereador_id === usuario.id
         );
-        if (snap.empty) {
-          setErro("Seu usuário não está cadastrado como parlamentar.");
-          setCarregando(false);
-          return;
-        }
-        const parlamentarDoc = snap.docs[0];
-        const parlamentarData = { id: parlamentarDoc.id, ...parlamentarDoc.data() };
-        setParlamentar(parlamentarData);
-
-        // Busca sessão ativa
-        const sessoesSnap = await getDocs(collection(db, "sessoes"));
-        const sessao = sessoesSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-          .find((s) => s.status === "Ativa");
-        if (!sessao) {
-          setErro("Nenhuma sessão ativa encontrada.");
-          setCarregando(false);
-          return;
-        }
-        setSessaoAtiva(sessao);
-
-        // Confere se está habilitado (id do parlamentar tem que estar em habilitados)
-        if (!sessao.habilitados || !Array.isArray(sessao.habilitados) || !sessao.habilitados.includes(parlamentarDoc.id)) {
-          setErro("Você não está habilitado para votar nesta sessão. Procure a Mesa Diretora.");
-          setCarregando(false);
-          return;
-        }
-
-        // Busca votação atual do painel
-        const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
-        if (!painelSnap.exists() || !painelSnap.data().votacaoAtual) {
-          setErro("Nenhuma votação em andamento.");
-          setCarregando(false);
-          return;
-        }
-        const painelData = painelSnap.data();
-        setVotacaoAtual(painelData.votacaoAtual);
-
-        // Busca voto atual
-        let voto = "";
-        if (painelData.votacaoAtual.votos && Array.isArray(painelData.votacaoAtual.votos)) {
-          const votoObj = painelData.votacaoAtual.votos.find((v) => v.vereador_id === parlamentarDoc.id);
-          if (votoObj) voto = votoObj.voto;
-        }
-        setVotoAtual(voto);
-
-        setCarregando(false);
-      } catch (e) {
-        setErro("Erro ao carregar dados. " + e.message);
-        setCarregando(false);
+        setVoto(votoAtual ? votoAtual.voto : "");
+      } else {
+        setVoto("");
       }
     });
-    return () => unsub();
-  }, []);
+    return () => unsubscribe();
+  }, [usuario.id]);
 
-  // Só vota se status em_votacao
-  const votacaoLiberada = votacaoAtual && votacaoAtual.status === "em_votacao";
-
-  // Função para iniciar voto/alteração
-  function handleVotarClick(voto) {
-    setNovoVoto(voto);
-    setSenha("");
-    setSenhaModal(true);
-    setErro("");
-  }
-
-  // Confirmação da senha e voto
-  async function confirmarVoto() {
-    setVotoProcessando(true);
-    setErro("");
-    try {
-      if (senha !== parlamentar.senha) {
-        setErro("Senha incorreta!");
-        setVotoProcessando(false);
-        return;
-      }
-
-      // Atualiza voto no painel
-      const painelRef = doc(db, "painelAtivo", "ativo");
-      const painelSnap = await getDoc(painelRef);
-      if (!painelSnap.exists()) {
-        setErro("Votação não encontrada.");
-        setVotoProcessando(false);
-        setSenhaModal(false);
-        return;
-      }
-      const painelData = painelSnap.data();
-      let votos = painelData.votacaoAtual.votos || [];
-
-      let votou = false;
-      votos = votos.map((v) => {
-        if (v.vereador_id === parlamentar.id) {
-          votou = true;
-          return { ...v, voto: novoVoto, timestamp: new Date().toISOString() };
-        }
-        return v;
-      });
-      if (!votou) {
-        votos.push({
-          vereador_id: parlamentar.id,
-          nome: parlamentar.nome,
-          voto: novoVoto,
-          timestamp: new Date().toISOString(),
-        });
-      }
-
-      await updateDoc(painelRef, {
-        "votacaoAtual.votos": votos,
-      });
-
-      setVotoAtual(novoVoto);
-      setSenhaModal(false);
-    } catch (e) {
-      setErro("Erro ao registrar voto: " + e.message);
-    }
-    setVotoProcessando(false);
-  }
-
-  if (carregando) return <div className="p-4">Carregando...</div>;
-  if (erro) return <div className="p-4 text-red-600 bg-red-100 rounded">{erro}</div>;
-
-  return (
-    <div>
-      <TopoInstitucional />
-      <div className="max-w-3xl mx-auto p-4 bg-white rounded shadow mt-6">
-        <h2 className="text-2xl font-semibold mb-4 text-center">
-          Sessão Ativa - Painel do Parlamentar
-        </h2>
-        <div className="mb-4">
-          <strong>Bem-vindo, {parlamentar.nome}</strong>
-        </div>
-        {votacaoAtual && (
-          <>
-            <div className="mb-2">
-              <span className="font-semibold">Matéria em Votação:</span>{" "}
-              {votacaoAtual.titulo} ({votacaoAtual.tipo})<br />
-              <span className="italic">Autor: {votacaoAtual.autor || "-"}</span>
-            </div>
-            <div className="mb-2">
-              <span className="font-semibold">Status:</span>{" "}
-              <span className="capitalize">{votacaoAtual.status}</span>
-            </div>
-            {votacaoLiberada ? (
-              <div className="my-4">
-                <span className="font-semibold">Seu voto:</span>
-                <div className="flex space-x-2 mt-2">
-                  {["Sim", "Não", "Abstenção"].map((v) => (
-                    <button
-                      key={v}
-                      className={`px-4 py-2 rounded font-bold shadow ${votoAtual === v ? "bg-blue-600 text-white" : "bg-gray-200"}`}
-                      disabled={senhaModal}
-                      onClick={() => handleVotarClick(v)}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                <div className="mt-2">
-                  {votoAtual && (
-                    <span>
-                      Seu voto atual: <span className="font-bold">{votoAtual}</span>
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="my-4">
-                <span className="text-gray-700">
-                  Votação encerrada ou não iniciada.
-                </span>
-              </div>
-            )}
-          </>
-        )}
-        {/* Modal de senha */}
-        {senhaModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-            <div className="bg-white rounded p-6 max-w-sm w-full shadow-lg">
-              <h3 className="text-lg font-bold mb-2">
-                Confirme sua senha para votar
-              </h3>
-              <input
-                type="password"
-                className="w-full border rounded p-2 mb-4"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                placeholder="Digite sua senha"
-                disabled={votoProcessando}
-              />
-              {erro && (
-                <div className="text-red-500 mb-2">{erro}</div>
-              )}
-              <div className="flex justify-end space-x-2">
-                <button
-                  className="bg-gray-300 px-3 py-1 rounded"
-                  onClick={() => setSenhaModal(false)}
-                  disabled={votoProcessando}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="bg-blue-600 text-white px-3 py-1 rounded"
-                  onClick={confirmarVoto}
-                  disabled={votoProcessando}
-                >
-                  Confirmar Voto
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Mini painel público */}
-        <div className="mt-6 p-2 bg-gray-100 rounded">
-          <h3 className="font-semibold mb-2 text-blue-700">
-            Painel Público - Acompanhe a Sessão
-          </h3>
-          <PainelVotacao mini />
+  if (!painel)
+    return (
+      <div className="sessao-parlamentar-container">
+        <TopoInstitucional />
+        <div className="sessao-info">
+          <h2>Sessão não iniciada</h2>
+          <p>Aguardando início da sessão...</p>
         </div>
       </div>
+    );
+
+  const { votacaoAtual, statusSessao, titulo, data, hora, presidente, secretario } = painel;
+  const materia = votacaoAtual?.materia || votacaoAtual?.titulo || "-";
+  const autor = votacaoAtual?.autor || "-";
+  const tipo = votacaoAtual?.tipo || "-";
+  const statusVotacao = (votacaoAtual?.status || "").toLowerCase();
+  const habilitados = votacaoAtual?.habilitados || [];
+  const podeVotar =
+    statusSessao === "Ativa" &&
+    (statusVotacao === "em_votacao" || statusVotacao === "votando") &&
+    habilitados.includes(usuario.id);
+
+  const jaVotou = voto === "Sim" || voto === "Não" || voto === "Abstenção";
+
+  // Fluxo de alteração de voto com dupla confirmação
+  const handleVotar = (novoVoto) => {
+    if (jaVotou && voto !== novoVoto) {
+      setModalConfirm({ exibir: true, etapa: 1, votoNovo: novoVoto });
+    } else if (!jaVotou) {
+      enviarVoto(novoVoto);
+    }
+  };
+
+  const confirmarAlteracao = async () => {
+    if (modalConfirm.etapa === 1) {
+      setModalConfirm((m) => ({ ...m, etapa: 2 }));
+    } else if (modalConfirm.etapa === 2) {
+      setModalConfirm({ exibir: false, etapa: 1, votoNovo: "" });
+      await enviarVoto(modalConfirm.votoNovo);
+    }
+  };
+
+  const cancelarAlteracao = () => {
+    setModalConfirm({ exibir: false, etapa: 1, votoNovo: "" });
+  };
+
+  // Envio do voto (primeiro voto ou alteração)
+  const enviarVoto = async (escolha) => {
+    setEnviando(true);
+    setStatus("");
+    try {
+      const ref = doc(db, "painelAtivo", "ativo");
+      await updateDoc(ref, {
+        [`votacaoAtual.votos.${usuario.id}`]: {
+          vereador_id: usuario.id,
+          nome: usuario.nome,
+          partido: usuario.partido,
+          voto: escolha,
+          foto: usuario.foto || "",
+          dataHora: new Date().toISOString(),
+        },
+      });
+      setVoto(escolha);
+      setStatus("Voto registrado com sucesso!");
+    } catch (err) {
+      setStatus("Erro ao registrar voto. Tente novamente.");
+    }
+    setEnviando(false);
+  };
+
+  let msg = "";
+  if (!habilitados.includes(usuario.id)) {
+    msg = "Você não está habilitado para votar nesta sessão. Procure a Mesa Diretora.";
+  } else if (!(statusVotacao === "em_votacao" || statusVotacao === "votando")) {
+    msg = "Aguardando abertura da votação.";
+  } else if (jaVotou) {
+    msg = "Seu voto já foi registrado! Caso deseje, é possível alterar até o final da votação.";
+  }
+
+  return (
+    <div className="sessao-parlamentar-container">
+      <TopoInstitucional />
+      <div className="sessao-parlamentar-bloco">
+        <div className="parlamentar-header">
+          <img
+            src={usuario.foto || "/assets/default-parlamentar.png"}
+            alt={usuario.nome}
+            className="parlamentar-foto"
+          />
+          <div>
+            <div className="parlamentar-nome">{usuario.nome} {usuario.partido && <span className="parlamentar-partido">({usuario.partido})</span>}</div>
+            <div className="parlamentar-tipo">Perfil: {usuario.tipo}</div>
+          </div>
+        </div>
+
+        <div className="sessao-info">
+          <h2>Votação em Andamento</h2>
+          <p><b>Matéria:</b> {materia}</p>
+          <p><b>Tipo:</b> {tipo}</p>
+          <p><b>Autor:</b> {autor}</p>
+          <p><b>Status:</b> <span className="status-votacao">{votacaoAtual?.status || "-"}</span></p>
+          <p><b>Sessão:</b> {titulo || "-"} | <b>Data:</b> {data || "-"} | <b>Hora:</b> {hora || "-"}</p>
+          <p><b>Presidente:</b> {presidente || "-"} | <b>Secretário:</b> {secretario || "-"}</p>
+        </div>
+
+        <div className="sessao-voto-bloco">
+          {podeVotar && (
+            <div className="voto-opcoes">
+              <h3>Selecione seu voto:</h3>
+              <button
+                className={`botao-voto botao-voto-sim${voto === "Sim" ? " ativo" : ""}`}
+                onClick={() => handleVotar("Sim")}
+                disabled={enviando}
+              >
+                ✅ Sim
+              </button>
+              <button
+                className={`botao-voto botao-voto-nao${voto === "Não" ? " ativo" : ""}`}
+                onClick={() => handleVotar("Não")}
+                disabled={enviando}
+              >
+                ❌ Não
+              </button>
+              <button
+                className={`botao-voto botao-voto-abstencao${voto === "Abstenção" ? " ativo" : ""}`}
+                onClick={() => handleVotar("Abstenção")}
+                disabled={enviando}
+              >
+                ⚪ Abstenção
+              </button>
+            </div>
+          )}
+
+          <div className="voto-mensagem">{msg}</div>
+
+          {jaVotou && (
+            <div className="voto-confirmado">
+              <p>Seu voto atual:</p>
+              <span className={`voto-exibido voto-${voto.toLowerCase()}`}>{voto}</span>
+            </div>
+          )}
+
+          {status && <div className="voto-status">{status}</div>}
+        </div>
+      </div>
+
+      {/* MODAL DE CONFIRMAÇÃO DUPLA */}
+      {modalConfirm.exibir && (
+        <div className="modal-overlay">
+          <div className="modal-confirmacao">
+            {modalConfirm.etapa === 1 ? (
+              <>
+                <p>Tem certeza que deseja alterar seu voto para <b>{modalConfirm.votoNovo}</b>?</p>
+                <div>
+                  <button className="botao-confirmar" onClick={confirmarAlteracao}>Confirmar</button>
+                  <button className="botao-cancelar" onClick={cancelarAlteracao}>Cancelar</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p><b>Confirme novamente:</b> alterar o voto para <b>{modalConfirm.votoNovo}</b>?</p>
+                <div>
+                  <button className="botao-confirmar" onClick={confirmarAlteracao}>Confirmar e Salvar</button>
+                  <button className="botao-cancelar" onClick={cancelarAlteracao}>Cancelar</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
