@@ -38,7 +38,7 @@ const TELAS = [
   "AlterarSenha",
  "ConsultaPublica",
 "GerenciarConsultaPublica",
- "CentralConsulta"
+ "CentralConsulta",
  "PainelParlamentar",
 ];
 
