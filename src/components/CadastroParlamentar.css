@@ -1,105 +1,249 @@
-/* CadastroParlamentar.css */
-
 .cadastro-parlamentar {
-  padding: 20px;
-  background-color: #f9fbfc;
-  border-radius: 10px;
-  max-width: 1000px;
-  margin: auto;
-  font-family: "Segoe UI", sans-serif;
-  overflow-x: hidden;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 12px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #18345d;
 }
 
-.cadastro-parlamentar h2,
-.cadastro-parlamentar h3 {
+.cadastro-parlamentar h2, .cadastro-parlamentar h3 {
   text-align: center;
-  color: #003366;
+  margin-bottom: 18px;
+  color: #17335a;
+  font-weight: 700;
 }
 
-.formulario {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
+.cadastro-parlamentar .formulario {
+  background: #f8fafd;
+  border-radius: 12px;
+  padding: 20px 18px 14px 18px;
+  margin-bottom: 24px;
+  box-shadow: 0 3px 18px #0001;
+  max-width: 490px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
-.formulario input,
-.formulario select,
-.formulario textarea {
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  font-size: 14px;
+.cadastro-parlamentar label {
+  font-weight: 500;
+  margin-bottom: 3px;
+  display: block;
+  color: #17335a;
+}
+
+.cadastro-parlamentar input,
+.cadastro-parlamentar select,
+.cadastro-parlamentar textarea {
   width: 100%;
+  max-width: 400px;
+  margin-bottom: 8px;
+  font-size: 1rem;
+  border: 1.3px solid #bdd2ef;
+  border-radius: 8px;
+  padding: 9px 11px;
+  background: #f9fbfe;
+  color: #153159;
+  transition: border 0.2s;
+  outline: none;
   box-sizing: border-box;
 }
 
-.formulario textarea {
-  height: 80px;
+.cadastro-parlamentar input:focus,
+.cadastro-parlamentar select:focus,
+.cadastro-parlamentar textarea:focus {
+  border: 1.5px solid #397ee6;
+  background: #f2f7fc;
 }
 
-button {
-  padding: 8px 12px;
-  background-color: #2e6de6;
-  color: white;
-  font-weight: bold;
+.cadastro-parlamentar textarea {
+  min-height: 64px;
+  max-width: 420px;
+  resize: vertical;
+}
+
+.cadastro-parlamentar button {
+  background: #17335a;
+  color: #fff;
   border: none;
-  border-radius: 6px;
-  margin: 3px;
+  border-radius: 7px;
+  padding: 10px 24px;
+  font-weight: 600;
+  margin-right: 10px;
+  margin-top: 10px;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.18s;
+}
+.cadastro-parlamentar button:hover {
+  background: #2159a5;
 }
 
-button:hover {
-  background-color: #1c4ec4;
+.cadastro-parlamentar button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-button[style*="background-color: #999"] {
-  background-color: #999 !important;
+/* Preview da foto quadrada */
+.cadastro-parlamentar .foto-preview {
+  width: 100px;
+  height: 100px;
+  background: #eee;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 10px 0 5px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cadastro-parlamentar .foto-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+.cadastro-parlamentar .foto-preview span {
+  color: #bbb;
+  font-size: 1rem;
 }
 
+/* Tabela principal */
 .table-container {
   overflow-x: auto;
-  margin-top: 10px;
-}
-
-table {
   width: 100%;
+}
+.table-container table {
+  width: 100%;
+  min-width: 600px;
   border-collapse: collapse;
-  background-color: #ffffff;
-  min-width: 800px;
+  background: #fff;
+  box-shadow: 0 2px 14px #0001;
+  margin-bottom: 10px;
 }
-
-th, td {
-  padding: 10px;
-  border: 1px solid #ddd;
+.table-container th, .table-container td {
   text-align: center;
-  vertical-align: middle;
+  padding: 10px 7px;
+  border-bottom: 1.5px solid #e4ecf5;
+  font-size: 1rem;
+}
+.table-container th {
+  background: #e7eefa;
+  color: #17335a;
+  font-weight: 700;
+}
+.table-container td {
+  background: #fcfdff;
 }
 
-th {
-  background-color: #e8f0fe;
-  color: #333;
+/* Foto quadrada na tabela */
+.table-container .foto-tabela {
+  width: 50px;
+  height: 50px;
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-
-img {
-  border-radius: 4px;
-  max-width: 50px;
-  max-height: 50px;
+.table-container .foto-tabela img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 10px;
 }
-
-input::placeholder,
-textarea::placeholder {
+.table-container .foto-tabela span {
   color: #aaa;
-  font-style: italic;
+  font-size: 0.97rem;
 }
 
-@media (max-width: 600px) {
-  .formulario {
-    grid-template-columns: 1fr;
+/* Ações */
+.table-container button {
+  padding: 7px 15px;
+  border-radius: 6px;
+  font-size: 0.98rem;
+  font-weight: 500;
+  margin: 2px 3px;
+  background: #17335a;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+.table-container button:hover {
+  background: #2159a5;
+}
+.table-container button:last-child {
+  background: #d13c36;
+}
+.table-container button:last-child:hover {
+  background: #b02d29;
+}
+
+/* Paginação */
+.cadastro-parlamentar .paginacao {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0 10px 0;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.cadastro-parlamentar .paginacao button {
+  padding: 8px 20px;
+  background: #17335a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  opacity: 1;
+}
+.cadastro-parlamentar .paginacao button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cadastro-parlamentar .paginacao span {
+  font-weight: 600;
+  color: #17335a;
+  font-size: 1rem;
+}
+
+/* Filtros */
+.cadastro-parlamentar .filtros {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .cadastro-parlamentar {
+    padding: 3px;
+    font-size: 0.96rem;
+  }
+  .cadastro-parlamentar .formulario, .cadastro-parlamentar .table-container {
+    max-width: 100vw;
+    min-width: unset;
+    box-shadow: none;
+    padding: 10px 3px;
+  }
+  .table-container table {
+    min-width: 560px;
+    font-size: 0.96rem;
+  }
+  .cadastro-parlamentar .foto-preview,
+  .table-container .foto-tabela {
+    width: 68px;
+    height: 68px;
   }
 }
 
-select, input[type="file"] {
-  cursor: pointer;
+@media (max-width: 470px) {
+  .table-container table {
+    min-width: 400px;
+    font-size: 0.92rem;
+  }
+  .cadastro-parlamentar .foto-preview,
+  .table-container .foto-tabela {
+    width: 48px;
+    height: 48px;
+  }
 }
