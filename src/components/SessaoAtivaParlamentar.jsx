@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { getAuth } from "firebase/auth";
+import React, { useEffect, useState } from "react";
+import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   doc,
   getDoc,
@@ -26,19 +26,20 @@ export default function SessaoAtivaParlamentar() {
   const [novoVoto, setNovoVoto] = useState("");
   const [votoProcessando, setVotoProcessando] = useState(false);
 
-  // 1. Busca usuário logado
   useEffect(() => {
-    async function fetchUser() {
-      setCarregando(true);
-      setErro("");
+    let unsubscribe = null;
+    setCarregando(true);
+    setErro("");
+
+    const auth = getAuth();
+
+    unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+      if (!authUser) {
+        setErro("Usuário não autenticado.");
+        setCarregando(false);
+        return;
+      }
       try {
-        const auth = getAuth();
-        const authUser = auth.currentUser;
-        if (!authUser) {
-          setErro("Usuário não autenticado.");
-          setCarregando(false);
-          return;
-        }
         // Busca usuário em 'usuarios' (email igual ao do Auth)
         const usuariosRef = collection(db, "usuarios");
         const q = query(usuariosRef, where("email", "==", authUser.email));
@@ -51,7 +52,11 @@ export default function SessaoAtivaParlamentar() {
         const userDoc = snap.docs[0];
         const userData = { id: userDoc.id, ...userDoc.data() };
 
-        if (userData.tipoUsuario !== "Vereador") {
+        if (
+          !["vereador", "Vereador", "VEREADOR"].includes(
+            (userData.tipoUsuario || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          )
+        ) {
           setErro("Você não tem permissão para votar nesta tela.");
           setCarregando(false);
           return;
@@ -121,9 +126,11 @@ export default function SessaoAtivaParlamentar() {
         setErro("Erro ao carregar dados. " + e.message);
         setCarregando(false);
       }
-    }
-    fetchUser();
-    // Escuta: se precisar atualizar em tempo real, pode implementar snapshot.
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   // Votação está ativa?
