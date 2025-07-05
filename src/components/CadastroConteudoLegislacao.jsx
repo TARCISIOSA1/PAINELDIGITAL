@@ -87,7 +87,6 @@ export default function CadastroConteudoLegislacao() {
             value={novoTitulo}
             placeholder="Título do conteúdo"
             onChange={e => setNovoTitulo(e.target.value)}
-            style={{ width: "60%", marginBottom: 8 }}
             required
           />
           <textarea
@@ -95,7 +94,6 @@ export default function CadastroConteudoLegislacao() {
             placeholder="Cole aqui o texto completo (lei, artigo, norma etc)..."
             onChange={e => setNovoTexto(e.target.value)}
             rows={8}
-            style={{ width: "100%", marginBottom: 8 }}
             required
           />
           <button type="submit" className="btn-salvar">Salvar</button>
