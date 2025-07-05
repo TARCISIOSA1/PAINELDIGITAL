@@ -11,7 +11,6 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
-import TopoInstitucional from "./TopoInstitucional";
 import { FaTrash, FaEdit, FaLock, FaUserPlus } from "react-icons/fa";
 
 function hashSenha(str) {
@@ -143,9 +142,18 @@ export default function CadastroUsuario() {
   };
 
   return (
-    <>
-      <TopoInstitucional />
-      <h2 style={{ textAlign: "center", color: "#17335a", fontSize: 28, margin: "32px 0 24px 0" }}>
+    <div style={{
+      maxWidth: 1000,
+      margin: "0 auto",
+      padding: "0 8px 60px 8px",
+      fontFamily: "Arial, sans-serif"
+    }}>
+      <h2 style={{
+        textAlign: "center",
+        color: "#17335a",
+        fontSize: 28,
+        margin: "32px 0 24px 0"
+      }}>
         Cadastro de Usuários
       </h2>
       <form onSubmit={handleSalvar} autoComplete="off" style={{ maxWidth: 900, margin: "0 auto 24px auto" }}>
@@ -157,7 +165,10 @@ export default function CadastroUsuario() {
             value={formData.nome}
             onChange={e => setFormData({ ...formData, nome: e.target.value })}
             required autoComplete="off"
-            style={{ minWidth: 190, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
+            style={{
+              minWidth: 190, flex: 1, padding: 9, borderRadius: 8,
+              border: "1.2px solid #bdd2ef"
+            }}
           />
           <input
             key={inputKey + "_email"}
@@ -166,7 +177,10 @@ export default function CadastroUsuario() {
             value={formData.email}
             onChange={e => setFormData({ ...formData, email: e.target.value })}
             required autoComplete="off"
-            style={{ minWidth: 190, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
+            style={{
+              minWidth: 190, flex: 1, padding: 9, borderRadius: 8,
+              border: "1.2px solid #bdd2ef"
+            }}
           />
           <input
             key={inputKey + "_senha"}
@@ -176,14 +190,20 @@ export default function CadastroUsuario() {
             onChange={e => setFormData({ ...formData, senha: e.target.value })}
             required={!editingId}
             autoComplete="new-password"
-            style={{ minWidth: 140, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
+            style={{
+              minWidth: 140, flex: 1, padding: 9, borderRadius: 8,
+              border: "1.2px solid #bdd2ef"
+            }}
           />
           <select
             key={inputKey + "_tipo"}
             value={formData.tipoUsuario}
             onChange={e => setFormData({ ...formData, tipoUsuario: e.target.value })}
             required
-            style={{ minWidth: 145, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
+            style={{
+              minWidth: 145, flex: 1, padding: 9, borderRadius: 8,
+              border: "1.2px solid #bdd2ef"
+            }}
           >
             <option value="Vereador">Vereador</option>
             <option value="Administrativo">Administrativo</option>
@@ -216,7 +236,10 @@ export default function CadastroUsuario() {
       </form>
       <h3 style={{ color: "#18345d", textAlign: "center", marginTop: 32, marginBottom: 14 }}>Usuários Cadastrados</h3>
       <div style={{ maxWidth: 1000, margin: "0 auto" }}>
-        <table style={{ width: "100%", minWidth: 620, borderCollapse: "collapse", background: "#fff" }}>
+        <table style={{
+          width: "100%", minWidth: 620, borderCollapse: "collapse",
+          background: "#fff", borderRadius: 8, boxShadow: "0 1px 4px #0001"
+        }}>
           <thead>
             <tr>
               <th style={{ padding: 11, background: "#e7eefa", color: "#17335a", fontWeight: 700 }}>Nome</th>
@@ -243,6 +266,6 @@ export default function CadastroUsuario() {
           </tbody>
         </table>
       </div>
-    </>
+    </div>
   );
 }
