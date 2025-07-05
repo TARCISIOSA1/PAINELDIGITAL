@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
+import "./SessaoAtivaParlamentar.css";
 import PainelVotacao from "./PainelVotacao"; // Painel público como miniatura
 
 export default function SessaoAtivaParlamentar() {
