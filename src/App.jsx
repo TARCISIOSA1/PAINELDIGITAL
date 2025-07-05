@@ -4,9 +4,11 @@ import {
   Routes,
   Route,
   NavLink,
+  useNavigate,
 } from "react-router-dom";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
+import { getAuth, signOut } from "firebase/auth";
 
 // IMPORTS DOS COMPONENTES
 import CadastroProjeto from "./components/CadastroProjeto";
@@ -44,7 +46,6 @@ import CadastroConteudoLegislacao from "./components/CadastroConteudoLegislacao"
 import CentralConsulta from "./components/CentralConsulta";
 import ConsultaPublicaMateria from "./components/ConsultaPublicaMateria";
 import GerenciarConsultaPublica from "./components/GerenciarConsultaPublica";
-
 import "./App.css";
 
 // LABELS
@@ -123,7 +124,7 @@ const CONSULTA_PUBLICA = [
   { nome: "GerenciarConsultaPublica", path: "/gerenciar-consulta-publica" }
 ];
 
-export default function App() {
+function AppContent() {
   const [menuAberto, setMenuAberto] = useState("");
   const menuRefs = {
     leg: useRef(),
@@ -135,6 +136,7 @@ export default function App() {
     acc: useRef(),
   };
   const [telasPermitidas, setTelasPermitidas] = useState([]);
+  const navigate = useNavigate();
 
   const usuarioLogado = localStorage.getItem("usuarioLogado");
   let tipoUsuario = "vereador";
@@ -196,8 +198,20 @@ export default function App() {
 
   const exibeDropdown = (grupo) => grupo.some(item => pode(item.nome));
 
+  // Função de logout
+  function handleLogout() {
+    localStorage.removeItem("usuarioLogado");
+    localStorage.removeItem("tipoUsuario");
+    try {
+      const auth = getAuth();
+      signOut(auth).catch(() => {});
+    } catch {}
+    navigate("/login");
+    window.location.reload();
+  }
+
   return (
-    <Router>
+    <>
       <header className="header" style={{
         display: "flex",
         alignItems: "center",
@@ -210,12 +224,31 @@ export default function App() {
           <img src="/assets/logo-plenario-digital.png" alt="Logo Plenário Digital" className="logo" style={{ height: 38, marginRight: 16 }} />
           <span style={{ fontWeight: "bold", fontSize: 18 }}>PAINEL DIGITAL</span>
         </div>
-        <div style={{
-          fontWeight: "bold",
-          fontSize: 15,
-          color: "#333"
-        }}>
-          Usuário logado: {nomeUsuario}
+        <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
+          <span style={{
+            fontWeight: "bold",
+            fontSize: 15,
+            color: "#333"
+          }}>
+            Usuário logado: {nomeUsuario}
+          </span>
+          {usuarioLogado && (
+            <button
+              onClick={handleLogout}
+              style={{
+                background: "#1976d2",
+                color: "#fff",
+                border: "none",
+                borderRadius: 5,
+                padding: "6px 18px",
+                fontWeight: 600,
+                fontSize: 15,
+                cursor: "pointer"
+              }}
+            >
+              Sair
+            </button>
+          )}
         </div>
       </header>
 
@@ -478,8 +511,16 @@ export default function App() {
         </Routes>
       </main>
       <footer className="footer-institucional">
-       SA tecnologia, &copy; {new Date().getFullYear()} — Plenário Digit@L & Premium Legislativo, contato: 75 983310340 Goes 75 991897595 @ Araujo.
+        SA tecnologia, &copy; {new Date().getFullYear()} — Plenário Digit@L & Premium Legislativo, contato: 75 983310340 Goes 75 991897595 @ Araujo.
       </footer>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }
