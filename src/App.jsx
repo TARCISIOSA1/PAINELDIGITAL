@@ -23,6 +23,7 @@ import Votacao from "./components/Votacao";
 import PainelVotacao from "./components/PainelVotacao";
 import PainelVotacaoIA from "./components/PainelVotacaoIA";
 import VotacaoVereador from "./components/VotacaoVereador";
+import SessaoAtivaParlamentar from "./components/SessaoAtivaParlamentar"; // <--- NOVO
 import Login from "./components/Login";
 import PedidosIA from "./components/PedidosIA";
 import CadastroPauta from "./components/CadastroPauta";
@@ -57,6 +58,7 @@ const TELAS_LABEL = {
   PainelDeControle: "Painel de Controle",
   PainelPublico: "Painel Público",
   PainelPublicoIA: "Painel Público (IA)",
+  PainelParlamentar: "Painel Parlamentar", // <--- NOVO LABEL
   Comissoes: "Comissões",
   Presencas: "Presenças",
   Usuarios: "Usuários",
@@ -90,6 +92,7 @@ const LEGISLATIVO = [
   { nome: "SessaoLegislativa", path: "/sessao-legislativa" },
   { nome: "Legislacao", path: "/legislacao" },
   { nome: "PainelDeControle", path: "/votacao" },
+  { nome: "PainelParlamentar", path: "/painel-parlamentar" }, // <--- NOVO MENU
   { nome: "PainelPublico", path: "/painel" },
   { nome: "PainelPublicoIA", path: "/painel-ia" },
   { nome: "Comissoes", path: "/comissoes" },
@@ -493,6 +496,7 @@ function AppContent() {
           <Route path="/vereador" element={<RotaPrivada><CadastroVereador /></RotaPrivada>} />
           <Route path="/tramitacao" element={<RotaPrivada><Tramitacao /></RotaPrivada>} />
           <Route path="/votacao" element={<RotaPrivada><Votacao /></RotaPrivada>} />
+          <Route path="/painel-parlamentar" element={<RotaPrivada><SessaoAtivaParlamentar /></RotaPrivada>} /> {/* NOVA ROTA */}
           <Route path="/votar/:id" element={<RotaPrivada><VotacaoVereador /></RotaPrivada>} />
           <Route path="/pedidos-ia" element={<RotaPrivada><PedidosIA /></RotaPrivada>} />
           <Route path="/protocolos" element={<RotaPrivada><CadastroProtocolo usuario={nomeUsuario} /></RotaPrivada>} />
