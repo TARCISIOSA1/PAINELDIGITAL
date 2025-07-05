@@ -13,7 +13,7 @@ import { db } from "../firebase";
 import { getAuth, createUserWithEmailAndPassword } from "firebase/auth";
 import TopoInstitucional from "./TopoInstitucional";
 import { FaTrash, FaEdit, FaLock, FaUserPlus } from "react-icons/fa";
-import "./CadastroVereador.css";
+import "./CadastroVereador.css"; // ou seu CSS
 
 function hashSenha(str) {
   let hash = 0, i, chr;
@@ -25,11 +25,9 @@ function hashSenha(str) {
   return hash.toString();
 }
 
-// FUNÇÃO PADRONIZADORA DE TIPO DE USUÁRIO (SEM acento, sempre igual no sistema)
 function normalizaTipoUsuario(tipo) {
   if (!tipo) return "Vereador";
   const t = tipo.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  // Corrige variantes/acento do "Jurídico"
   if (t.toLowerCase().startsWith("jur")) return "Juridico";
   if (t === "Administrativo") return "Administrativo";
   if (t === "Presidente") return "Presidente";
@@ -120,7 +118,6 @@ export default function CadastroUsuario() {
         }
       }
 
-      // GARANTE tipoUsuario SEM acento, igual nas permissões:
       const tipoUsuarioFinal = normalizaTipoUsuario(formData.tipoUsuario);
 
       const docData = {
@@ -176,12 +173,19 @@ export default function CadastroUsuario() {
   };
 
   return (
-    <div className="cadastro-container">
+    <>
       <TopoInstitucional />
-      <h2 className="sistema-nome">Cadastro de Usuários</h2>
+      <h2 style={{
+        textAlign: "center",
+        color: "#17335a",
+        fontSize: 28,
+        margin: "32px 0 24px 0"
+      }}>
+        Cadastro de Usuários
+      </h2>
 
-      <form className="form-cadastro" onSubmit={handleSalvar} autoComplete="off">
-        <div className="form-inputs" style={{ display: "flex", gap: 10 }}>
+      <form className="form-cadastro" onSubmit={handleSalvar} autoComplete="off" style={{ maxWidth: 900, margin: "0 auto 24px auto" }}>
+        <div className="form-inputs" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <input
             key={inputKey + "_nome"}
             type="text"
@@ -192,6 +196,7 @@ export default function CadastroUsuario() {
             }
             required
             autoComplete="off"
+            style={{ minWidth: 190, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
           />
           <input
             key={inputKey + "_email"}
@@ -203,6 +208,7 @@ export default function CadastroUsuario() {
             }
             required
             autoComplete="off"
+            style={{ minWidth: 190, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
           />
           <input
             key={inputKey + "_senha"}
@@ -214,6 +220,7 @@ export default function CadastroUsuario() {
             }
             required={!editingId}
             autoComplete="new-password"
+            style={{ minWidth: 140, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
           />
           <select
             key={inputKey + "_tipo"}
@@ -222,6 +229,7 @@ export default function CadastroUsuario() {
               setFormData({ ...formData, tipoUsuario: e.target.value })
             }
             required
+            style={{ minWidth: 145, flex: 1, padding: 9, borderRadius: 8, border: "1.2px solid #bdd2ef" }}
           >
             <option value="Vereador">Vereador</option>
             <option value="Administrativo">Administrativo</option>
@@ -243,6 +251,7 @@ export default function CadastroUsuario() {
               display: "flex",
               alignItems: "center",
               gap: 5,
+              height: 42
             }}
           >
             <FaUserPlus /> Novo Usuário
@@ -257,6 +266,7 @@ export default function CadastroUsuario() {
               padding: "10px 16px",
               borderRadius: 6,
               fontWeight: "bold",
+              height: 42
             }}
             disabled={loading}
           >
@@ -269,30 +279,42 @@ export default function CadastroUsuario() {
         </div>
       </form>
 
-      <h3>Usuários Cadastrados</h3>
-      <div className="tabela-container">
-        <table className="tabela-usuarios">
+      <h3 style={{ color: "#18345d", textAlign: "center", marginTop: 32, marginBottom: 14 }}>Usuários Cadastrados</h3>
+      <div className="tabela-container" style={{ maxWidth: 1000, margin: "0 auto" }}>
+        <table className="tabela-usuarios" style={{ width: "100%", minWidth: 620, borderCollapse: "collapse", background: "#fff" }}>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Email</th>
-              <th>Tipo</th>
-              <th>Status</th>
-              <th>Ações</th>
+              <th style={{ padding: 11, background: "#e7eefa", color: "#17335a", fontWeight: 700 }}>Nome</th>
+              <th style={{ padding: 11, background: "#e7eefa", color: "#17335a", fontWeight: 700 }}>Email</th>
+              <th style={{ padding: 11, background: "#e7eefa", color: "#17335a", fontWeight: 700 }}>Tipo</th>
+              <th style={{ padding: 11, background: "#e7eefa", color: "#17335a", fontWeight: 700 }}>Status</th>
+              <th style={{ padding: 11, background: "#e7eefa", color: "#17335a", fontWeight: 700 }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {usuarios.map((v) => (
               <tr key={v.id}>
-                <td>{v.nome}</td>
-                <td>{v.email}</td>
-                <td>{v.tipoUsuario}</td>
-                <td>{v.bloqueado ? "Bloqueado" : "Ativo"}</td>
-                <td>
+                <td style={{ textAlign: "center", padding: 9 }}>{v.nome}</td>
+                <td style={{ textAlign: "center", padding: 9 }}>{v.email}</td>
+                <td style={{ textAlign: "center", padding: 9 }}>{v.tipoUsuario}</td>
+                <td style={{ textAlign: "center", padding: 9 }}>
+                  {v.bloqueado ? "Bloqueado" : "Ativo"}
+                </td>
+                <td style={{ textAlign: "center", padding: 9 }}>
                   <button
                     className="action-btn editar"
                     onClick={() => handleEditar(v)}
                     title="Editar"
+                    style={{
+                      background: "#2764cc",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 7,
+                      padding: "6px 13px",
+                      marginRight: 4,
+                      cursor: "pointer",
+                      fontSize: "1rem",
+                    }}
                   >
                     <FaEdit />
                   </button>
@@ -300,6 +322,16 @@ export default function CadastroUsuario() {
                     className="action-btn excluir"
                     onClick={() => handleExcluir(v.id)}
                     title="Excluir"
+                    style={{
+                      background: "#d13c36",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 7,
+                      padding: "6px 13px",
+                      marginRight: 4,
+                      cursor: "pointer",
+                      fontSize: "1rem",
+                    }}
                   >
                     <FaTrash />
                   </button>
@@ -307,6 +339,15 @@ export default function CadastroUsuario() {
                     className="action-btn bloquear"
                     onClick={() => handleBloquear(v.id, v.bloqueado)}
                     title={v.bloqueado ? "Desbloquear" : "Bloquear"}
+                    style={{
+                      background: "#888",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 7,
+                      padding: "6px 13px",
+                      cursor: "pointer",
+                      fontSize: "1rem",
+                    }}
                   >
                     <FaLock />
                   </button>
@@ -316,6 +357,6 @@ export default function CadastroUsuario() {
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }
