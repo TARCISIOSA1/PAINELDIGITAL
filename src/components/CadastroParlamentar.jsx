@@ -43,6 +43,10 @@ export default function CadastroParlamentar() {
   const [filtroPartido, setFiltroPartido] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
 
+  // PAGINAÇÃO
+  const [pagina, setPagina] = useState(0);
+  const porPagina = 6;
+
   useEffect(() => {
     carregarParlamentares();
     carregarUsuarios();
@@ -122,6 +126,7 @@ export default function CadastroParlamentar() {
     setFotoFile(null);
     setUsuarioSelecionado("");
     carregarParlamentares();
+    setPagina(0); // Volta pra primeira página ao cadastrar novo
   };
 
   const excluirParlamentar = async (id) => {
@@ -201,6 +206,22 @@ export default function CadastroParlamentar() {
 
     doc.save("parlamentares-filtrados.pdf");
   };
+
+  // ---- NOVO: filtragem + paginação real ----
+  const filtrados = parlamentares
+    .filter((p) =>
+      p.nome?.toLowerCase().includes(filtroNome.toLowerCase()) &&
+      p.partido?.toLowerCase().includes(filtroPartido.toLowerCase()) &&
+      (filtroStatus === "" || p.status === filtroStatus)
+    );
+  const totalPaginas = Math.ceil(filtrados.length / porPagina);
+  const listaPaginada = filtrados.slice(pagina * porPagina, (pagina + 1) * porPagina);
+
+  // Se excluir e página fica vazia, volta uma página
+  useEffect(() => {
+    if (pagina > 0 && listaPaginada.length === 0) setPagina(pagina - 1);
+    // eslint-disable-next-line
+  }, [filtrados.length, pagina]);
 
   return (
     <div className="cadastro-parlamentar">
@@ -283,16 +304,37 @@ export default function CadastroParlamentar() {
             </tr>
           </thead>
           <tbody>
-            {parlamentares
-              .filter((p) =>
-                p.nome.toLowerCase().includes(filtroNome.toLowerCase()) &&
-                p.partido.toLowerCase().includes(filtroPartido.toLowerCase()) &&
-                (filtroStatus === "" || p.status === filtroStatus)
-              )
-              .map((p) => (
+            {listaPaginada.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ textAlign: "center" }}>Nenhum parlamentar encontrado.</td>
+              </tr>
+            ) : (
+              listaPaginada.map((p) => (
                 <tr key={p.id}>
                   <td>{p.id}</td>
-                  <td>{p.foto ? <img src={p.foto} alt="Foto" width="50" /> : "Sem foto"}</td>
+                  <td>
+                    <div style={{
+                      width: 50,
+                      height: 50,
+                      background: "#eee",
+                      borderRadius: 10,
+                      overflow: "hidden",
+                      margin: "0 auto",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}>
+                      {p.foto
+                        ? <img src={p.foto} alt="Foto" style={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            borderRadius: 10,
+                          }} />
+                        : <span style={{ color: "#aaa" }}>Sem foto</span>
+                      }
+                    </div>
+                  </td>
                   <td>{p.nome}</td>
                   <td>{p.numero}</td>
                   <td>{p.votos}</td>
@@ -303,10 +345,30 @@ export default function CadastroParlamentar() {
                     <button onClick={() => excluirParlamentar(p.id)}>Excluir</button>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
           </tbody>
         </table>
       </div>
+
+      {/* PAGINAÇÃO */}
+      {totalPaginas > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", margin: "24px 0" }}>
+          <button
+            disabled={pagina === 0}
+            onClick={() => setPagina(pagina - 1)}
+            style={{ padding: "8px 20px", marginRight: 20, background: "#17335a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, opacity: pagina === 0 ? 0.5 : 1 }}
+          >Anterior</button>
+          <span style={{ fontWeight: 600, color: "#17335a" }}>
+            Página {pagina + 1} de {totalPaginas}
+          </span>
+          <button
+            disabled={pagina + 1 >= totalPaginas}
+            onClick={() => setPagina(pagina + 1)}
+            style={{ padding: "8px 20px", marginLeft: 20, background: "#17335a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, opacity: (pagina + 1 >= totalPaginas) ? 0.5 : 1 }}
+          >Próxima</button>
+        </div>
+      )}
     </div>
   );
 }
