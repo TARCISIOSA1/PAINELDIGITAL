@@ -23,6 +23,7 @@ export default function ParlamentaresTabela() {
   const porPagina = 6;
   const fileInputRef = useRef();
 
+  // Carrega parlamentares
   useEffect(() => {
     async function carregar() {
       setLoading(true);
@@ -37,11 +38,11 @@ export default function ParlamentaresTabela() {
     carregar();
   }, [addModal, editando]);
 
-  // Cálculo de páginas
+  // Paginação
   const totalPaginas = Math.ceil(parlamentares.length / porPagina);
-  const dadosPagina = parlamentares.slice(pagina * porPagina, (pagina + 1) * porPagina);
+  const listaPaginada = parlamentares.slice(pagina * porPagina, (pagina + 1) * porPagina);
 
-  // Resto do CRUD igual antes...
+  // CRUD EDIÇÃO
   function startEdit(p) {
     setEditando(p.docId);
     setEditForm({
@@ -98,7 +99,7 @@ export default function ParlamentaresTabela() {
     }
   }
 
-  // Cadastro novo parlamentar (igual antes)
+  // Cadastro novo parlamentar
   async function handleNovo(e) {
     e.preventDefault();
     if (!novo.nome || !novo.id) {
@@ -124,7 +125,14 @@ export default function ParlamentaresTabela() {
     setNovo({
       nome: "", partido: "", id: "", numero: "", votos: "", status: "Ativo", fotoFile: null, fotoUrl: ""
     });
+    setPagina(0); // Volta pra primeira página
   }
+
+  // Responsivo: se excluir último da página, volta uma página
+  useEffect(() => {
+    if (pagina > 0 && listaPaginada.length === 0) setPagina(pagina - 1);
+    // eslint-disable-next-line
+  }, [parlamentares, pagina]);
 
   return (
     <div style={{
@@ -141,14 +149,96 @@ export default function ParlamentaresTabela() {
         </button>
       </div>
       {addModal && (
-        // ...modal igual antes...
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "#0005",
           display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999
         }}>
-          {/* ...formulário do novo... */}
+          <form
+            onSubmit={handleNovo}
+            style={{ background: "#fff", borderRadius: 14, boxShadow: "0 8px 32px #0003", padding: 34, minWidth: 320, maxWidth: 420 }}
+          >
+            <h3>Novo Parlamentar</h3>
+            <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
+              <label style={{
+                width: 110, height: 110, borderRadius: 12, border: "2px dashed #17335a",
+                overflow: "hidden", background: "#eee", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                {novo.fotoFile ? (
+                  <img
+                    src={URL.createObjectURL(novo.fotoFile)}
+                    alt="Preview"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span style={{ color: "#aaa", fontSize: 30 }}>+</span>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={e => setNovo(f => ({ ...f, fotoFile: e.target.files[0] }))}
+                />
+              </label>
+            </div>
+            <input
+              name="nome"
+              value={novo.nome}
+              onChange={e => setNovo(f => ({ ...f, nome: e.target.value }))}
+              placeholder="Nome Completo"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+              required
+            />
+            <input
+              name="id"
+              value={novo.id}
+              onChange={e => setNovo(f => ({ ...f, id: e.target.value }))}
+              placeholder="ID"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+              required
+            />
+            <input
+              name="partido"
+              value={novo.partido}
+              onChange={e => setNovo(f => ({ ...f, partido: e.target.value }))}
+              placeholder="Partido"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+            />
+            <input
+              name="numero"
+              value={novo.numero}
+              onChange={e => setNovo(f => ({ ...f, numero: e.target.value }))}
+              placeholder="Número"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+            />
+            <input
+              name="votos"
+              value={novo.votos}
+              onChange={e => setNovo(f => ({ ...f, votos: e.target.value }))}
+              placeholder="Votos"
+              type="number"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+            />
+            <select
+              name="status"
+              value={novo.status}
+              onChange={e => setNovo(f => ({ ...f, status: e.target.value }))}
+              style={{ marginBottom: 18, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+            >
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button type="button" onClick={() => setAddModal(false)} style={{ background: "#bbb", color: "#333", border: "none", borderRadius: 7, padding: "8px 22px" }}>
+                Cancelar
+              </button>
+              <button type="submit" style={{ background: "#17335a", color: "#fff", border: "none", borderRadius: 7, padding: "8px 22px" }}>
+                Salvar
+              </button>
+            </div>
+          </form>
         </div>
       )}
+
       <div style={{ overflowX: "auto" }}>
         <table style={{
           width: "100%",
@@ -172,7 +262,7 @@ export default function ParlamentaresTabela() {
             {loading ? (
               <tr><td colSpan={8} style={{ textAlign: "center", padding: 30 }}>Carregando...</td></tr>
             ) : (
-              dadosPagina.map((p) => (
+              listaPaginada.map((p) => (
                 <tr key={p.docId} style={{ background: editando === p.docId ? "#f2f7fc" : "#fff" }}>
                   <td style={td}>{p.docId}</td>
                   <td style={td}>
@@ -264,15 +354,12 @@ export default function ParlamentaresTabela() {
             )}
           </tbody>
         </table>
-        {/* ====== PAGINAÇÃO ======= */}
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", margin: "20px 0" }}>
+        {/* PAGINAÇÃO */}
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", margin: "24px 0" }}>
           <button
             disabled={pagina === 0}
             onClick={() => setPagina(pagina - 1)}
-            style={{
-              background: "#17335a", color: "#fff", border: "none", borderRadius: 8,
-              padding: "7px 20px", marginRight: 15, opacity: pagina === 0 ? 0.5 : 1, fontWeight: 600
-            }}
+            style={{ padding: "8px 20px", marginRight: 20, background: "#17335a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, opacity: pagina === 0 ? 0.5 : 1 }}
           >Anterior</button>
           <span style={{ fontWeight: 600, color: "#17335a" }}>
             Página {pagina + 1} de {totalPaginas}
@@ -280,10 +367,7 @@ export default function ParlamentaresTabela() {
           <button
             disabled={pagina + 1 >= totalPaginas}
             onClick={() => setPagina(pagina + 1)}
-            style={{
-              background: "#17335a", color: "#fff", border: "none", borderRadius: 8,
-              padding: "7px 20px", marginLeft: 15, opacity: (pagina + 1 >= totalPaginas) ? 0.5 : 1, fontWeight: 600
-            }}
+            style={{ padding: "8px 20px", marginLeft: 20, background: "#17335a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, opacity: (pagina + 1 >= totalPaginas) ? 0.5 : 1 }}
           >Próxima</button>
         </div>
       </div>
