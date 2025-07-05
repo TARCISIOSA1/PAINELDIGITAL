@@ -17,6 +17,7 @@ import PainelVotacao from "./PainelVotacao"; // Painel público como miniatura
 export default function SessaoAtivaParlamentar() {
   const [carregando, setCarregando] = useState(true);
   const [usuario, setUsuario] = useState(null);
+  const [parlamentar, setParlamentar] = useState(null);
   const [presenca, setPresenca] = useState(null);
   const [votacaoAtual, setVotacaoAtual] = useState(null);
   const [votoAtual, setVotoAtual] = useState("");
@@ -40,7 +41,7 @@ export default function SessaoAtivaParlamentar() {
         return;
       }
       try {
-        // Busca usuário em 'usuarios'
+        // Busca usuário do Auth (em 'usuarios')
         const usuariosRef = collection(db, "usuarios");
         const q = query(usuariosRef, where("email", "==", authUser.email));
         const snap = await getDocs(q);
@@ -51,20 +52,22 @@ export default function SessaoAtivaParlamentar() {
         }
         const userDoc = snap.docs[0];
         const userData = { id: userDoc.id, ...userDoc.data() };
+        setUsuario(userData);
 
-        if (
-          !["vereador", "Vereador", "VEREADOR"].includes(
-            (userData.tipoUsuario || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-          )
-        ) {
-          setErro("Você não tem permissão para votar nesta tela.");
+        // Busca PARLAMENTAR correspondente (por email)
+        const parlamentaresRef = collection(db, "parlamentares");
+        const qParl = query(parlamentaresRef, where("email", "==", userData.email));
+        const parlSnap = await getDocs(qParl);
+        if (parlSnap.empty) {
+          setErro("Apenas parlamentares podem acessar a votação.");
           setCarregando(false);
           return;
         }
+        const parlDoc = parlSnap.docs[0];
+        const parlamentarData = { id: parlDoc.id, ...parlDoc.data() };
+        setParlamentar(parlamentarData);
 
-        setUsuario(userData);
-
-        // Busca sessão ativa (status: Ativa)
+        // Busca sessão ativa
         const sessoesSnap = await getDocs(collection(db, "sessoes"));
         const sessaoAtiva = sessoesSnap.docs
           .map((doc) => ({ id: doc.id, ...doc.data() }))
@@ -75,8 +78,8 @@ export default function SessaoAtivaParlamentar() {
           return;
         }
 
-        // Busca presença do usuário na SUBCOLEÇÃO DE PRESENÇAS da sessão ativa
-        const presencaDocRef = doc(db, "sessoes", sessaoAtiva.id, "presencas", userData.uid || userDoc.id);
+        // Busca presença pela chave do parlamentar
+        const presencaDocRef = doc(db, "sessoes", sessaoAtiva.id, "presencas", parlamentarData.id);
         const presencaDocSnap = await getDoc(presencaDocRef);
         if (!presencaDocSnap.exists()) {
           setErro("Você não registrou presença nesta sessão.");
@@ -96,10 +99,8 @@ export default function SessaoAtivaParlamentar() {
         }
         setPresenca(presencaData);
 
-        // Busca votação atual (painelAtivo/votacaoAtual)
-        const votacaoSnap = await getDoc(
-          doc(db, "painelAtivo", "votacaoAtual")
-        );
+        // Busca votação atual
+        const votacaoSnap = await getDoc(doc(db, "painelAtivo", "votacaoAtual"));
         if (!votacaoSnap.exists()) {
           setErro("Nenhuma votação em andamento.");
           setCarregando(false);
@@ -108,11 +109,10 @@ export default function SessaoAtivaParlamentar() {
         const votacaoData = votacaoSnap.data();
         setVotacaoAtual(votacaoData);
 
-        // Descobre voto atual do vereador (se já existe)
+        // Busca voto atual do parlamentar (usando parlamentarId)
         const votoUser =
           votacaoData.votos?.find(
-            (v) =>
-              v.vereador_id === (userData.uid || userDoc.id)
+            (v) => v.vereador_id === parlamentarData.id
           )?.voto || "";
 
         setVotoAtual(votoUser);
@@ -129,8 +129,7 @@ export default function SessaoAtivaParlamentar() {
   }, []);
 
   // Votação está ativa?
-  const votacaoLiberada =
-    votacaoAtual && votacaoAtual.status === "votando";
+  const votacaoLiberada = votacaoAtual && votacaoAtual.status === "votando";
 
   // Função para iniciar voto/alteração
   function handleVotarClick(voto) {
@@ -145,6 +144,7 @@ export default function SessaoAtivaParlamentar() {
     setVotoProcessando(true);
     setErro("");
     try {
+      // Busca senha do usuário (do campo, não Auth)
       if (senha !== usuario.senha) {
         setErro("Senha incorreta!");
         setVotoProcessando(false);
@@ -161,9 +161,7 @@ export default function SessaoAtivaParlamentar() {
       }
       const votacaoData = votacaoSnap.data();
       const votos = votacaoData.votos?.map((v) => {
-        if (
-          v.vereador_id === (usuario.uid || usuario.id)
-        ) {
+        if (v.vereador_id === parlamentar.id) {
           return {
             ...v,
             voto: novoVoto,
@@ -201,7 +199,7 @@ export default function SessaoAtivaParlamentar() {
         </h2>
 
         <div className="mb-4">
-          <strong>Bem-vindo, {usuario.nome}</strong>
+          <strong>Bem-vindo, {parlamentar.nome}</strong>
         </div>
 
         {votacaoAtual && (
