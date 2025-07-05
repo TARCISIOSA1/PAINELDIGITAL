@@ -42,8 +42,6 @@ export default function CadastroParlamentar() {
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroPartido, setFiltroPartido] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("");
-
-  // PAGINAÇÃO
   const [pagina, setPagina] = useState(0);
   const porPagina = 6;
 
@@ -127,7 +125,7 @@ export default function CadastroParlamentar() {
     setFotoFile(null);
     setUsuarioSelecionado("");
     carregarParlamentares();
-    setPagina(0); // Volta pra primeira página ao cadastrar novo
+    setPagina(0);
   };
 
   const excluirParlamentar = async (id) => {
@@ -208,7 +206,7 @@ export default function CadastroParlamentar() {
     doc.save("parlamentares-filtrados.pdf");
   };
 
-  // ---- NOVO: filtragem + paginação real ----
+  // PAGINAÇÃO
   const filtrados = parlamentares
     .filter((p) =>
       p.nome?.toLowerCase().includes(filtroNome.toLowerCase()) &&
@@ -218,17 +216,16 @@ export default function CadastroParlamentar() {
   const totalPaginas = Math.ceil(filtrados.length / porPagina);
   const listaPaginada = filtrados.slice(pagina * porPagina, (pagina + 1) * porPagina);
 
-  // Se excluir e página fica vazia, volta uma página
   useEffect(() => {
     if (pagina > 0 && listaPaginada.length === 0) setPagina(pagina - 1);
     // eslint-disable-next-line
   }, [filtrados.length, pagina]);
 
   return (
-    <div className="cadastro-parlamentar" style={{ maxWidth: 1100, margin: "0 auto", padding: 12 }}>
+    <div className="cadastro-parlamentar">
       <h2>Cadastro de Parlamentar</h2>
 
-      <div className="formulario" style={{ background: "#f8fafd", borderRadius: 12, padding: 20, marginBottom: 24 }}>
+      <div className="formulario">
         <label>Selecionar Usuário Cadastrado</label>
         <select value={usuarioSelecionado} onChange={(e) => preencherCamposDoUsuario(e.target.value)}>
           <option value="">-- Selecione --</option>
@@ -237,43 +234,57 @@ export default function CadastroParlamentar() {
           ))}
         </select>
 
+        <label>Nome</label>
         <input name="nome" placeholder="Nome" value={form.nome} onChange={handleChange} />
+
+        <label>Número</label>
         <input name="numero" placeholder="Número" value={form.numero} onChange={handleChange} />
+
+        <label>Número do Partido</label>
         <input name="numeroPartido" placeholder="Número do Partido" value={form.numeroPartido} onChange={handleChange} />
+
+        <label>Sigla do Partido</label>
         <input name="partido" placeholder="Sigla do Partido" value={form.partido} onChange={handleChange} />
+
+        <label>Votos</label>
         <input name="votos" placeholder="Votos" value={form.votos} onChange={handleChange} />
+
+        <label>Telefone</label>
         <input name="telefone" placeholder="Telefone" value={form.telefone} onChange={handleChange} />
+
+        <label>Email</label>
         <input name="email" placeholder="Email" value={form.email} onChange={handleChange} />
+
+        <label>Sexo</label>
         <input name="sexo" placeholder="Sexo" value={form.sexo} onChange={handleChange} />
 
+        <label>Tipo de Usuário</label>
         <select name="tipoUsuario" value={form.tipoUsuario} onChange={handleChange}>
           <option value="Vereador">Vereador</option>
           <option value="Presidente">Presidente</option>
         </select>
 
+        <label>Status</label>
         <select name="status" value={form.status} onChange={handleChange}>
           <option value="Ativo">Ativo</option>
           <option value="Inativo">Inativo</option>
         </select>
 
+        <label>Biografia</label>
         <textarea name="biografia" placeholder="Biografia" value={form.biografia} onChange={handleChange} />
 
+        <label>Foto</label>
         <input
           type="file"
           accept="image/*"
           onChange={e => setFotoFile(e.target.files[0])}
         />
-        {/* Preview quadrado */}
-        <div style={{
-          width: 100, height: 100, background: "#eee", borderRadius: 12, overflow: "hidden",
-          margin: "10px 0", display: "flex", alignItems: "center", justifyContent: "center"
-        }}>
+        <div className="foto-preview">
           {fotoFile
             ? (
               <img
                 src={URL.createObjectURL(fotoFile)}
                 alt="Preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }}
               />
             )
             : form.foto
@@ -281,10 +292,9 @@ export default function CadastroParlamentar() {
                 <img
                   src={form.foto}
                   alt="Foto"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 12 }}
                 />
               )
-              : <span style={{ color: "#bbb" }}>Sem foto</span>
+              : <span>Sem foto</span>
           }
         </div>
 
@@ -305,9 +315,7 @@ export default function CadastroParlamentar() {
 
       <h3>Usuários Cadastrados</h3>
 
-      <div style={{
-        display: "flex", gap: "10px", marginBottom: "10px", flexWrap: "wrap"
-      }}>
+      <div className="filtros">
         <input placeholder="Filtrar por nome" value={filtroNome} onChange={(e) => setFiltroNome(e.target.value)} />
         <input placeholder="Filtrar por partido" value={filtroPartido} onChange={(e) => setFiltroPartido(e.target.value)} />
         <select value={filtroStatus} onChange={(e) => setFiltroStatus(e.target.value)}>
@@ -319,12 +327,8 @@ export default function CadastroParlamentar() {
 
       <button onClick={gerarPDF} style={{ marginBottom: 10 }}>Gerar PDF com Lista</button>
 
-      <div className="table-container" style={{ overflowX: "auto" }}>
-        <table style={{
-          width: "100%",
-          minWidth: 600,
-          borderCollapse: "collapse"
-        }}>
+      <div className="table-container">
+        <table>
           <thead>
             <tr>
               <th>ID</th>
@@ -345,20 +349,12 @@ export default function CadastroParlamentar() {
             ) : (
               listaPaginada.map((p) => (
                 <tr key={p.id}>
-                  <td style={{ textAlign: "center" }}>{p.id}</td>
+                  <td>{p.id}</td>
                   <td>
-                    <div style={{
-                      width: 50, height: 50, background: "#eee", borderRadius: 10, overflow: "hidden",
-                      margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "center"
-                    }}>
+                    <div className="foto-tabela">
                       {p.foto
-                        ? <img src={p.foto} alt="Foto"
-                            style={{
-                              width: "100%", height: "100%",
-                              objectFit: "cover", borderRadius: 10
-                            }}
-                          />
-                        : <span style={{ color: "#aaa" }}>Sem foto</span>
+                        ? <img src={p.foto} alt="Foto" />
+                        : <span>Sem foto</span>
                       }
                     </div>
                   </td>
@@ -378,24 +374,18 @@ export default function CadastroParlamentar() {
         </table>
       </div>
 
-      {/* PAGINAÇÃO */}
       {totalPaginas > 1 && (
-        <div style={{
-          display: "flex", justifyContent: "center", alignItems: "center",
-          margin: "20px 0", gap: 18, flexWrap: "wrap"
-        }}>
+        <div className="paginacao">
           <button
             disabled={pagina === 0}
             onClick={() => setPagina(pagina - 1)}
-            style={{ padding: "8px 20px", background: "#17335a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, opacity: pagina === 0 ? 0.5 : 1 }}
           >Anterior</button>
-          <span style={{ fontWeight: 600, color: "#17335a" }}>
+          <span>
             Página {pagina + 1} de {totalPaginas}
           </span>
           <button
             disabled={pagina + 1 >= totalPaginas}
             onClick={() => setPagina(pagina + 1)}
-            style={{ padding: "8px 20px", background: "#17335a", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, opacity: (pagina + 1 >= totalPaginas) ? 0.5 : 1 }}
           >Próxima</button>
         </div>
       )}
