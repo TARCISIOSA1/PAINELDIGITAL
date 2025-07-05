@@ -1,58 +1,54 @@
-body {
-  margin: 0;
-  font-family: "Segoe UI", Arial, Helvetica, sans-serif;
-  background: #fff;
-  color: #1a1a1a;
-}
+/* NAV - MENU TOPO TÉCNICO E PROFISSIONAL */
 
-/* Topo com degrade azul */
-.header {
-  background: linear-gradient(90deg, #123c7a 0%, #187ae5 100%);
-  padding: 10px 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.header img.logo {
-  height: 48px;
-  object-fit: contain;
-}
-
-/* Navegação */
 .nav-wrapper {
-  background: linear-gradient(90deg, #154076 0%, #258fff 100%);
-  border-bottom: 2px solid #2164a5;
+  background: linear-gradient(90deg, #175192 0%, #2699fb 100%);
+  padding: 0;
+  margin: 0;
+  border-bottom: 2px solid #1976d2;
 }
 
 .nav-bar {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 8px 20px;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  min-height: 44px;
+  user-select: none;
 }
 
-.menu-item {
-  position: relative;
-  display: inline-block;
+.menu-item,
+.nav-link {
+  margin: 0 1px;
+  padding: 0;
 }
 
-.dropdown-toggle {
-  background: #185fa4;
+.dropdown-toggle,
+.nav-link {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  font-size: 15px;
+  padding: 0 18px;
+  height: 40px;
+  line-height: 40px;
+  border-radius: 6px 6px 0 0;
   color: #fff;
+  background: rgba(0,0,0,0.07);
   border: none;
-  font-weight: bold;
-  padding: 9px 18px;
-  border-radius: 7px 7px 0 0;
+  outline: none;
+  font-weight: 600;
   cursor: pointer;
-  margin-right: 6px;
-  font-size: 16px;
-  box-shadow: 0 2px 6px rgba(20,60,150,0.05);
-  transition: background .15s;
+  transition: background .14s, color .14s;
+  box-shadow: none;
+  min-width: 0;
+  letter-spacing: 0.01em;
 }
-.dropdown-toggle:hover,
-.dropdown-toggle:focus {
-  background: #258fff;
+
+.nav-link.active,
+.dropdown-toggle:focus,
+.dropdown-toggle[aria-expanded="true"],
+.nav-link:hover,
+.dropdown-toggle:hover {
+  background: #2196f3;
   color: #fff;
 }
 
@@ -60,81 +56,74 @@ body {
   position: absolute;
   left: 0;
   top: 100%;
-  background: #185fa4;
-  border-radius: 7px;
+  background: #1c436a;
+  border-radius: 0 0 6px 6px;
   z-index: 9999;
-  min-width: 180px;
-  box-shadow: 0 2px 8px rgba(24,87,180,0.10);
-  margin-top: 2px;
+  min-width: 170px;
+  box-shadow: 0 2px 8px rgba(0,20,60,0.08);
+  margin-top: 1px;
   pointer-events: auto;
-  padding: 6px 0;
+  padding: 5px 0;
+  border: 1px solid #2699fb;
 }
 
 .dropdown-link {
-  color: #e2f0ff;
-  padding: 11px 18px;
+  color: #e6f0fa;
+  padding: 8px 20px;
   display: block;
   text-decoration: none;
   border: none;
-  font-weight: bold;
   background: none;
-  transition: background .14s, color .13s;
-  cursor: pointer;
-}
-.dropdown-link:hover {
-  background: #258fff;
-  color: #fff;
-}
-
-.nav-link {
-  color: #e2f0ff;
-  text-decoration: none;
-  padding: 6px 12px;
-  border-radius: 6px;
-  background-color: #185fa4;
-  transition: background 0.2s, color .16s;
-  font-weight: bold;
-  border: none;
-}
-
-.nav-link:hover,
-.nav-link.active {
-  background: #258fff;
-  color: #fff;
-}
-
-/* Conteúdo da página */
-.page {
-  background: #fff;
-  color: #1a1a1a;
-  padding: 0;
-  min-height: 100vh;
-  border-radius: 0;
-  width: 100vw;
-}
-
-/* Rodapé degradê azul-prata */
-footer {
-  background: #185fa4;
-  color: #d6ecff;
-  padding: 14px 0 8px 0;
-  text-align: center;
+  font-size: 14.2px;
   font-weight: 500;
-  font-size: 15px;
-  letter-spacing: 1px;
-  margin-top: 28px;
+  transition: background .14s, color .14s;
+  border-radius: 0;
 }
-.footer-institucional {
-  width: 100vw;
-  background: linear-gradient(90deg, #3c6180 0%, #b4c4dd 100%);
-  color: #1b365d;
-  padding: 18px 0 8px 0;
-  text-align: center;
-  position: fixed;
-  left: 0;
-  bottom: 0;
-  z-index: 5;
-  box-shadow: 0 -1px 12px rgba(20,60,150,0.10);
-  font-size: 1.08rem;
-  letter-spacing: 1px;
+
+.dropdown-link:hover,
+.dropdown-link:focus {
+  background: #1976d2;
+  color: #fff;
+}
+
+.menu-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+
+@media (max-width: 900px) {
+  .nav-bar {
+    flex-wrap: wrap;
+    gap: 1px;
+    padding: 0 2px;
+    min-height: 40px;
+  }
+  .dropdown-toggle,
+  .nav-link {
+    font-size: 14px;
+    padding: 0 10px;
+    height: 36px;
+    line-height: 36px;
+  }
+}
+
+@media (max-width: 600px) {
+  .nav-bar {
+    flex-wrap: wrap;
+    gap: 0;
+    min-height: 36px;
+  }
+  .dropdown-toggle,
+  .nav-link {
+    font-size: 13.5px;
+    padding: 0 5px;
+    height: 32px;
+    line-height: 32px;
+  }
+  .dropdown-menu {
+    min-width: 120px;
+    font-size: 13px;
+  }
 }
