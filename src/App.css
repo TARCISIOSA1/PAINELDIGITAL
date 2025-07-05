@@ -127,20 +127,24 @@
     font-size: 13px;
   }
 }
+
+/* RODAPÉ FINO, NÃO FIXO */
+
 .footer-institucional {
   width: 100vw;
   background: linear-gradient(90deg, #23303f 0%, #319fff 100%);
   color: #fff;
-  padding: 32px 0 16px 0;
+  padding: 6px 0 3px 0;    /* Bem fino! */
   text-align: center;
-  position: fixed;
-  left: 0;
-  bottom: 0;
-  z-index: 20;
-  box-shadow: 0 -2px 18px rgba(20,20,20,0.15);
-  font-size: 1.22rem;
-  font-weight: 600;
-  border-top: 4px solid #e5e7ea;
+  box-shadow: 0 -1px 6px rgba(20,20,20,0.10);
+  font-size: 0.96rem;
+  font-weight: 500;
+  border-top: 2px solid #e5e7ea;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  min-height: 0;
+  margin-top: 30px;
+  /* Não é fixo! */
 }
 
 .footer-content {
@@ -148,29 +152,29 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
-  gap: 32px;
+  gap: 18px;
 }
 
 .footer-logo {
-  height: 48px;
+  height: 32px;
   width: auto;
-  margin-right: 12px;
-  filter: drop-shadow(0 2px 4px rgba(30,80,180,0.2));
+  margin-right: 8px;
+  filter: drop-shadow(0 2px 4px rgba(30,80,180,0.18));
   background: transparent;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 @media (max-width: 800px) {
   .footer-content {
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
   .footer-logo {
-    height: 38px;
-    margin: 0 0 5px 0;
+    height: 26px;
+    margin: 0 0 3px 0;
   }
   .footer-institucional {
-    font-size: 1rem;
-    padding: 22px 0 12px 0;
+    font-size: 0.89rem;
+    padding: 10px 0 3px 0;
   }
 }
