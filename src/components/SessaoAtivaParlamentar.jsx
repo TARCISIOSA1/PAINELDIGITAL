@@ -12,7 +12,7 @@ import {
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
 import "./SessaoAtivaParlamentar.css";
-import PainelVotacao from "./PainelVotacao"; // Painel público como miniatura
+import PainelVotacao from "./PainelVotacao";
 
 export default function SessaoAtivaParlamentar() {
   const [carregando, setCarregando] = useState(true);
@@ -28,110 +28,90 @@ export default function SessaoAtivaParlamentar() {
   const [votoProcessando, setVotoProcessando] = useState(false);
 
   useEffect(() => {
-    let unsubscribe = null;
     setCarregando(true);
     setErro("");
-
     const auth = getAuth();
-
-    unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+    const unsub = onAuthStateChanged(auth, async (authUser) => {
       if (!authUser) {
         setErro("Usuário não autenticado.");
         setCarregando(false);
         return;
       }
-      try {
-        // Busca usuário do Auth (em 'usuarios')
-        const usuariosRef = collection(db, "usuarios");
-        const q = query(usuariosRef, where("email", "==", authUser.email));
-        const snap = await getDocs(q);
-        if (snap.empty) {
-          setErro("Usuário não encontrado no cadastro de usuários.");
-          setCarregando(false);
-          return;
-        }
-        const userDoc = snap.docs[0];
-        const userData = { id: userDoc.id, ...userDoc.data() };
-        setUsuario(userData);
 
-        // Busca PARLAMENTAR correspondente (por email)
-        const parlamentaresRef = collection(db, "parlamentares");
-        const qParl = query(parlamentaresRef, where("email", "==", userData.email));
-        const parlSnap = await getDocs(qParl);
-        if (parlSnap.empty) {
-          setErro("Apenas parlamentares podem acessar a votação.");
-          setCarregando(false);
-          return;
-        }
-        const parlDoc = parlSnap.docs[0];
-        const parlamentarData = { id: parlDoc.id, ...parlDoc.data() };
-        setParlamentar(parlamentarData);
-
-        // Busca sessão ativa
-        const sessoesSnap = await getDocs(collection(db, "sessoes"));
-        const sessaoAtiva = sessoesSnap.docs
-          .map((doc) => ({ id: doc.id, ...doc.data() }))
-          .find((s) => s.status === "Ativa");
-        if (!sessaoAtiva) {
-          setErro("Nenhuma sessão ativa encontrada.");
-          setCarregando(false);
-          return;
-        }
-
-        // Busca presença pela chave do parlamentar
-        const presencaDocRef = doc(db, "sessoes", sessaoAtiva.id, "presencas", parlamentarData.id);
-        const presencaDocSnap = await getDoc(presencaDocRef);
-        if (!presencaDocSnap.exists()) {
-          setErro("Você não registrou presença nesta sessão.");
-          setCarregando(false);
-          return;
-        }
-        const presencaData = presencaDocSnap.data();
-        if (!presencaData.presente) {
-          setErro("Sua presença não foi registrada na sessão.");
-          setCarregando(false);
-          return;
-        }
-        if (!presencaData.habilitado) {
-          setErro("Você não está habilitado para votar nesta sessão (fale com a Mesa Diretora).");
-          setCarregando(false);
-          return;
-        }
-        setPresenca(presencaData);
-
-        // Busca votação atual
-        const votacaoSnap = await getDoc(doc(db, "painelAtivo", "votacaoAtual"));
-        if (!votacaoSnap.exists()) {
-          setErro("Nenhuma votação em andamento.");
-          setCarregando(false);
-          return;
-        }
-        const votacaoData = votacaoSnap.data();
-        setVotacaoAtual(votacaoData);
-
-        // Busca voto atual do parlamentar (usando parlamentarId)
-        const votoUser =
-          votacaoData.votos?.find(
-            (v) => v.vereador_id === parlamentarData.id
-          )?.voto || "";
-
-        setVotoAtual(votoUser);
+      // 1. Busca usuário pelo e-mail (tabela usuarios)
+      const usuariosSnap = await getDocs(query(collection(db, "usuarios"), where("email", "==", authUser.email)));
+      if (usuariosSnap.empty) {
+        setErro("Usuário não cadastrado.");
         setCarregando(false);
-      } catch (e) {
-        setErro("Erro ao carregar dados. " + e.message);
-        setCarregando(false);
+        return;
       }
+      const userData = { id: usuariosSnap.docs[0].id, ...usuariosSnap.docs[0].data() };
+      setUsuario(userData);
+
+      // 2. Busca parlamentar pelo e-mail (coleção parlamentares)
+      const parlamentaresSnap = await getDocs(query(collection(db, "parlamentares"), where("email", "==", userData.email)));
+      if (parlamentaresSnap.empty) {
+        setErro("Apenas parlamentares cadastrados podem votar.");
+        setCarregando(false);
+        return;
+      }
+      const parlamentarData = { id: parlamentaresSnap.docs[0].id, ...parlamentaresSnap.docs[0].data() };
+      setParlamentar(parlamentarData);
+
+      // 3. Busca sessão ativa
+      const sessoesSnap = await getDocs(collection(db, "sessoes"));
+      const sessaoAtivaDoc = sessoesSnap.docs.find(doc => doc.data().status === "Ativa");
+      if (!sessaoAtivaDoc) {
+        setErro("Nenhuma sessão ativa encontrada.");
+        setCarregando(false);
+        return;
+      }
+      const sessaoAtivaId = sessaoAtivaDoc.id;
+
+      // 4. Busca presença do parlamentar pelo ID do parlamentar
+      const presencaRef = doc(db, "sessoes", sessaoAtivaId, "presencas", parlamentarData.id);
+      const presencaSnap = await getDoc(presencaRef);
+      if (!presencaSnap.exists()) {
+        setErro("Você não registrou presença nesta sessão.");
+        setCarregando(false);
+        return;
+      }
+      const presencaData = presencaSnap.data();
+      if (!presencaData.presente) {
+        setErro("Sua presença não foi registrada na sessão.");
+        setCarregando(false);
+        return;
+      }
+      if (!presencaData.habilitado) {
+        setErro("Você não está habilitado para votar nesta sessão.");
+        setCarregando(false);
+        return;
+      }
+      setPresenca(presencaData);
+
+      // 5. Busca votação atual (painelAtivo/votacaoAtual)
+      const votacaoSnap = await getDoc(doc(db, "painelAtivo", "votacaoAtual"));
+      if (!votacaoSnap.exists()) {
+        setErro("Nenhuma votação em andamento.");
+        setCarregando(false);
+        return;
+      }
+      const votacaoData = votacaoSnap.data();
+      setVotacaoAtual(votacaoData);
+
+      // 6. Busca voto do parlamentar (usa ID do parlamentar)
+      const votoUser = (votacaoData.votos || []).find(v => v.vereador_id === parlamentarData.id)?.voto || "";
+      setVotoAtual(votoUser);
+
+      setCarregando(false);
     });
 
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    return () => unsub && unsub();
   }, []);
 
   // Votação está ativa?
   const votacaoLiberada = votacaoAtual && votacaoAtual.status === "votando";
 
-  // Função para iniciar voto/alteração
   function handleVotarClick(voto) {
     setNovoVoto(voto);
     setSenha("");
@@ -139,18 +119,15 @@ export default function SessaoAtivaParlamentar() {
     setErro("");
   }
 
-  // Confirmação da senha e voto
   async function confirmarVoto() {
     setVotoProcessando(true);
     setErro("");
     try {
-      // Busca senha do usuário (do campo, não Auth)
       if (senha !== usuario.senha) {
         setErro("Senha incorreta!");
         setVotoProcessando(false);
         return;
       }
-      // Atualiza voto no array de votos de painelAtivo/votacaoAtual
       const votacaoRef = doc(db, "painelAtivo", "votacaoAtual");
       const votacaoSnap = await getDoc(votacaoRef);
       if (!votacaoSnap.exists()) {
@@ -160,17 +137,11 @@ export default function SessaoAtivaParlamentar() {
         return;
       }
       const votacaoData = votacaoSnap.data();
-      const votos = votacaoData.votos?.map((v) => {
-        if (v.vereador_id === parlamentar.id) {
-          return {
-            ...v,
-            voto: novoVoto,
-            timestamp: new Date().toISOString(),
-          };
-        }
-        return v;
-      });
-
+      const votos = (votacaoData.votos || []).map(v =>
+        v.vereador_id === parlamentar.id
+          ? { ...v, voto: novoVoto, timestamp: new Date().toISOString() }
+          : v
+      );
       await updateDoc(votacaoRef, { votos });
       setVotoAtual(novoVoto);
       setSenhaModal(false);
@@ -180,55 +151,38 @@ export default function SessaoAtivaParlamentar() {
     setVotoProcessando(false);
   }
 
-  // ---- Renderização ----
   if (carregando) return <div className="p-4">Carregando...</div>;
-  if (erro)
-    return (
-      <div className="p-4 text-red-600 bg-red-100 rounded">{erro}</div>
-    );
+  if (erro) return <div className="p-4 text-red-600 bg-red-100 rounded">{erro}</div>;
 
   return (
     <div>
-      {/* TOPO INSTITUCIONAL */}
       <TopoInstitucional />
-
-      {/* PAINEL PARLAMENTAR */}
       <div className="max-w-3xl mx-auto p-4 bg-white rounded shadow mt-6">
         <h2 className="text-2xl font-semibold mb-4 text-center">
           Sessão Ativa - Painel do Parlamentar
         </h2>
-
         <div className="mb-4">
-          <strong>Bem-vindo, {parlamentar.nome}</strong>
+          <strong>Bem-vindo, {parlamentar?.nome || ""}</strong>
         </div>
-
         {votacaoAtual && (
           <>
             <div className="mb-2">
               <span className="font-semibold">Matéria em Votação:</span>{" "}
               {votacaoAtual.titulo} ({votacaoAtual.tipo})<br />
-              <span className="italic">
-                Autor: {votacaoAtual.autor || "-"}
-              </span>
+              <span className="italic">Autor: {votacaoAtual.autor || "-"}</span>
             </div>
-
             <div className="mb-2">
               <span className="font-semibold">Status:</span>{" "}
               <span className="capitalize">{votacaoAtual.status}</span>
             </div>
-
             {votacaoLiberada ? (
               <div className="my-4">
                 <span className="font-semibold">Seu voto:</span>
                 <div className="flex space-x-2 mt-2">
-                  {["Sim", "Não", "Abstenção"].map((v) => (
+                  {["Sim", "Não", "Abstenção"].map(v => (
                     <button
                       key={v}
-                      className={`px-4 py-2 rounded font-bold shadow ${
-                        votoAtual === v
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-200"
-                      }`}
+                      className={`px-4 py-2 rounded font-bold shadow ${votoAtual === v ? "bg-blue-600 text-white" : "bg-gray-200"}`}
                       disabled={senhaModal}
                       onClick={() => handleVotarClick(v)}
                     >
@@ -239,8 +193,7 @@ export default function SessaoAtivaParlamentar() {
                 <div className="mt-2">
                   {votoAtual && (
                     <span>
-                      Seu voto atual:{" "}
-                      <span className="font-bold">{votoAtual}</span>
+                      Seu voto atual: <span className="font-bold">{votoAtual}</span>
                     </span>
                   )}
                 </div>
@@ -254,8 +207,6 @@ export default function SessaoAtivaParlamentar() {
             )}
           </>
         )}
-
-        {/* Modal de senha */}
         {senhaModal && (
           <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
             <div className="bg-white rounded p-6 max-w-sm w-full shadow-lg">
@@ -266,13 +217,11 @@ export default function SessaoAtivaParlamentar() {
                 type="password"
                 className="w-full border rounded p-2 mb-4"
                 value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+                onChange={e => setSenha(e.target.value)}
                 placeholder="Digite sua senha"
                 disabled={votoProcessando}
               />
-              {erro && (
-                <div className="text-red-500 mb-2">{erro}</div>
-              )}
+              {erro && <div className="text-red-500 mb-2">{erro}</div>}
               <div className="flex justify-end space-x-2">
                 <button
                   className="bg-gray-300 px-3 py-1 rounded"
@@ -292,8 +241,6 @@ export default function SessaoAtivaParlamentar() {
             </div>
           </div>
         )}
-
-        {/* Mini painel público */}
         <div className="mt-6 p-2 bg-gray-100 rounded">
           <h3 className="font-semibold mb-2 text-blue-700">
             Painel Público - Acompanhe a Sessão
