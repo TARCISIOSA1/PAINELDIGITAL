@@ -95,15 +95,24 @@ const LEGISLATIVO = [
   { nome: "Presencas", path: "/presenca" },
   { nome: "Pauta", path: "/pauta" },
 ];
+const CADASTROS = [
+  { nome: "Usuarios", path: "/vereador" },
+  { nome: "Parlamentares", path: "/parlamentares" },
+  { nome: "Legislatura", path: "/legislatura" },
+  { nome: "Permissoes", path: "/permissoes" },
+];
+const ARQUIVOS = [
+  { nome: "Atas", path: "/atas" },
+  { nome: "VisualizarAtas", path: "/visualizacao-atas" },
+  { nome: "Tramitacao", path: "/tramitacao" },
+  { nome: "Relatorios", path: "/relatorios" },
+  { nome: "ProtocolosAdmin", path: "/painel-protocolos" },
+];
 const COMUNICACAO = [
   { nome: "Agenda", path: "/agenda" },
   { nome: "Email", path: "/email-chat" },
   { nome: "Chat", path: "/chat" },
   { nome: "NovoProtocolo", path: "/protocolos" },
-];
-const ARQUIVOS = [
-  { nome: "Atas", path: "/atas" },
-  { nome: "VisualizarAtas", path: "/visualizacao-atas" },
 ];
 const PAINEIS = [
   { nome: "PainelJuridico", path: "/painel-juridico" },
@@ -118,8 +127,9 @@ export default function App() {
   const [menuAberto, setMenuAberto] = useState("");
   const menuRefs = {
     leg: useRef(),
-    com: useRef(),
+    cad: useRef(),
     arq: useRef(),
+    com: useRef(),
     pain: useRef(),
     cpub: useRef(),
     acc: useRef(),
@@ -140,12 +150,12 @@ export default function App() {
       if (tipoUsuario === "masteradm") {
         setTelasPermitidas([
           ...LEGISLATIVO.map(t => t.nome),
+          ...CADASTROS.map(t => t.nome),
           ...COMUNICACAO.map(t => t.nome),
           ...ARQUIVOS.map(t => t.nome),
           ...PAINEIS.map(t => t.nome),
           ...CONSULTA_PUBLICA.map(t => t.nome),
-          "Usuarios", "Parlamentares", "Tramitacao", "Relatorios",
-          "Legislatura", "ProtocolosAdmin", "PedidosIA", "Permissoes",
+          "Tramitacao", "Relatorios", "PedidosIA",
           "Login", "AlterarSenha", "CentralConsulta"
         ]);
         return;
@@ -277,6 +287,36 @@ export default function App() {
               )}
             </div>
           )}
+          {/* Cadastros */}
+          {exibeDropdown(CADASTROS) && (
+            <div className="menu-item" ref={menuRefs.cad}>
+              <div
+                className="dropdown-toggle"
+                role="button"
+                tabIndex={0}
+                onClick={() => setMenuAberto(menuAberto === "cad" ? "" : "cad")}
+                style={{ userSelect: "none", cursor: "pointer" }}
+              >
+                Cadastros ▾
+              </div>
+              {menuAberto === "cad" && (
+                <div className="dropdown-menu">
+                  {CADASTROS.map(item =>
+                    pode(item.nome) && (
+                      <NavLink
+                        key={item.nome}
+                        to={item.path}
+                        className="dropdown-link"
+                        onClick={() => setMenuAberto("")}
+                      >
+                        {TELAS_LABEL[item.nome]}
+                      </NavLink>
+                    )
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           {/* Comunicação */}
           {exibeDropdown(COMUNICACAO) && (
             <div className="menu-item" ref={menuRefs.com}>
@@ -367,15 +407,8 @@ export default function App() {
               )}
             </div>
           )}
-          {/* Itens no menu principal */}
-          {pode("Usuarios") && <NavLink to="/vereador" className="nav-link">{TELAS_LABEL.Usuarios}</NavLink>}
-          {pode("Parlamentares") && <NavLink to="/parlamentares" className="nav-link">{TELAS_LABEL.Parlamentares}</NavLink>}
-          {pode("Tramitacao") && <NavLink to="/tramitacao" className="nav-link">{TELAS_LABEL.Tramitacao}</NavLink>}
-          {pode("Relatorios") && <NavLink to="/relatorios" className="nav-link">{TELAS_LABEL.Relatorios}</NavLink>}
-          {pode("Legislatura") && <NavLink to="/legislatura" className="nav-link">{TELAS_LABEL.Legislatura}</NavLink>}
-          {pode("ProtocolosAdmin") && <NavLink to="/painel-protocolos" className="nav-link">{TELAS_LABEL.ProtocolosAdmin}</NavLink>}
+          {/* Itens extra do menu principal */}
           {pode("PedidosIA") && <NavLink to="/pedidos-ia" className="nav-link">{TELAS_LABEL.PedidosIA}</NavLink>}
-          {pode("Permissoes") && <NavLink to="/permissoes" className="nav-link">{TELAS_LABEL.Permissoes}</NavLink>}
 
           {/* Menu Acesso */}
           <div className="menu-item" ref={menuRefs.acc}>
@@ -402,7 +435,6 @@ export default function App() {
         <Routes>
           {/* NOVA ROTA - Central de Consulta */}
           <Route path="/central-consulta" element={<RotaPrivada><CentralConsulta /></RotaPrivada>} />
-
           {/* Consulta Pública */}
           <Route path="/consulta-publica" element={<ConsultaPublicaMateria />} />
           <Route path="/gerenciar-consulta-publica" element={
@@ -410,7 +442,6 @@ export default function App() {
               <GerenciarConsultaPublica />
             </RotaPrivada>
           } />
-
           {/* Demais rotas */}
           <Route path="/painel" element={<PainelVotacao />} />
           <Route path="/painel-ia" element={<PainelVotacaoIA />} />
