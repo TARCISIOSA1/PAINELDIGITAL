@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from "react";
-import TopoInstitucional from "./TopoInstitucional"; // Importa o novo topo
 import "./PainelVotacao.css";
 import {
   doc,
@@ -217,15 +216,17 @@ export default function PainelVotacaoIA() {
 
   // Gera Ata em PDF
   const gerarAtaPDF = () => {
-    // ... (igual ao seu original)
+    // ... (implemente aqui se desejar)
   };
 
   const dadosGrafico = gerarDadosGrafico();
 
+  // === TELA BRANCA quando não houver sessão ativa ===
   if (!dadosPainel) {
-    return <p>Carregando painel inteligente...</p>;
+    return <div style={{ background: "#fff", minHeight: "100vh" }} />;
   }
 
+  // ======= RESTANTE DO PAINEL =======
   const {
     data: sessaoData,
     hora: sessaoHora,
@@ -242,8 +243,7 @@ export default function PainelVotacaoIA() {
 
   return (
     <div className="painel-ia-container" ref={containerRef}>
-      {/* TOPO INSTITUCIONAL UNIFICADO */}
-      <TopoInstitucional />
+      {/* BOTÃO TELA CHEIA */}
       <button className="btn-tela-cheia" onClick={entrarTelaCheia} title="Tela Cheia">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
           <path d="M9 3H5a2 2 0 0 0-2 2v4m12-6h4a2 2 0 0 1 2 2v4m0 6v4a2 2 0 0 1-2 2h-4m-6 6H5a2 2 0 0 1-2-2v-4"
@@ -251,7 +251,7 @@ export default function PainelVotacaoIA() {
         </svg>
       </button>
 
-      {/* O RESTANTE IGUAL AO SEU CÓDIGO */}
+      {/* INFORMAÇÕES DA SESSÃO E PRESENTES */}
       <section className="sessao-info-presentes">
         <div className="info-gerais">
           <h2>Informações da Sessão</h2>
@@ -286,6 +286,7 @@ export default function PainelVotacaoIA() {
         </div>
       </section>
 
+      {/* BLOCO TRIBUNA */}
       <section className="bloco-tribuna-central">
         <h2>Tribuna</h2>
         {tribunaAtual?.nome ? (
@@ -318,6 +319,7 @@ export default function PainelVotacaoIA() {
         )}
       </section>
 
+      {/* RESUMO IA */}
       {resumoFala.length > 0 && (
         <section className="resumo-ia">
           <h3>🧠 Resumo da Fala do Orador</h3>
@@ -329,6 +331,7 @@ export default function PainelVotacaoIA() {
         </section>
       )}
 
+      {/* BLOCO VOTAÇÃO */}
       <section className="bloco-votacao-central">
         <h2>Ordem do Dia</h2>
         {votacaoAtual?.materia ? (
