@@ -1,78 +1,160 @@
 .cadastro-legislacao-container {
-  background: #f6f8fa;
-  padding: 32px 0 24px 0;
-  max-width: 830px;
-  margin: 0 auto;
-  border-radius: 10px;
-  box-shadow: 0 1px 8px #e0e3e9;
+  max-width: 900px;
+  margin: 32px auto;
+  background: #f8fafd;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px #0001;
+  padding: 30px 34px 34px 34px;
 }
 
 .abas-legislacao {
-  margin-bottom: 24px;
-  text-align: center;
+  display: flex;
+  gap: 12px;
+  border-bottom: 2px solid #e1e8f1;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
 }
 .abas-legislacao button {
-  margin: 0 8px;
-  padding: 8px 24px;
+  background: none;
   border: none;
-  border-radius: 22px;
-  background: #e6eaf0;
-  color: #333;
-  font-size: 1.06em;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #215a8c;
+  padding: 10px 20px 8px 0;
+  border-bottom: 3px solid transparent;
   cursor: pointer;
-  transition: background 0.18s;
+  transition: border-color 0.17s;
 }
 .abas-legislacao .aba-ativa {
-  background: #2568d8;
-  color: #fff;
-  font-weight: bold;
+  color: #185aa3;
+  border-bottom: 3px solid #185aa3;
+  background: none;
 }
 
 .cadastro-form-legislacao {
-  margin-bottom: 28px;
+  background: #fff;
+  border-radius: 9px;
+  box-shadow: 0 1px 4px #e0e6f5;
+  padding: 20px 20px 15px 20px;
+  margin-bottom: 32px;
 }
+
 .cadastro-form-legislacao h3 {
+  color: #23457c;
+  font-weight: 600;
+  font-size: 1.1rem;
   margin-bottom: 10px;
 }
+
+.cadastro-form-legislacao form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .cadastro-form-legislacao input,
 .cadastro-form-legislacao textarea {
-  border: 1px solid #ccd4dd;
-  border-radius: 5px;
-  padding: 8px;
-  margin-bottom: 6px;
-  font-size: 1em;
+  font-size: 1rem;
+  border-radius: 7px;
+  border: 1.4px solid #b5cbee;
+  padding: 10px;
+  background: #f5f8fd;
 }
+
 .cadastro-form-legislacao .btn-salvar {
-  background: #2185e7;
+  background: #2563eb;
   color: #fff;
   border: none;
-  padding: 8px 24px;
-  border-radius: 6px;
+  border-radius: 7px;
+  padding: 10px 26px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 8px;
+  align-self: flex-end;
+  transition: background 0.18s;
   cursor: pointer;
-  font-weight: bold;
+}
+.cadastro-form-legislacao .btn-salvar:hover {
+  background: #164a97;
 }
 
 .lista-legislacao h4 {
-  margin-bottom: 8px;
+  color: #22416c;
+  font-size: 1.07rem;
+  margin-bottom: 10px;
 }
 .lista-legislacao ul {
+  padding-left: 0;
+  margin: 0;
   list-style: none;
-  padding: 0;
 }
 .lista-legislacao li {
-  background: #fff;
-  padding: 14px 18px;
+  background: #f6faff;
   border-radius: 7px;
-  margin-bottom: 12px;
-  border: 1px solid #e4e7f0;
+  padding: 16px 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px #0001;
+  word-break: break-word;
+  position: relative;
 }
-.btn-excluir {
-  background: #f0243e;
+.lista-legislacao .btn-excluir {
+  background: #e94d42;
   color: #fff;
   border: none;
-  border-radius: 4px;
-  padding: 4px 14px;
+  border-radius: 5px;
+  padding: 7px 20px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-top: 6px;
   cursor: pointer;
-  font-size: 0.98em;
-  margin-top: 5px;
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  transition: background 0.15s;
+}
+.lista-legislacao .btn-excluir:hover {
+  background: #ba221a;
+}
+
+@media (max-width: 800px) {
+  .cadastro-legislacao-container {
+    padding: 16px 7px;
+    max-width: 99vw;
+  }
+  .cadastro-form-legislacao {
+    padding: 13px 5px;
+  }
+}
+@media (max-width: 600px) {
+  .cadastro-legislacao-container {
+    padding: 4vw 2vw;
+    border-radius: 0;
+    box-shadow: none;
+    margin: 12px 0;
+  }
+  .abas-legislacao {
+    gap: 6px;
+  }
+  .cadastro-form-legislacao form {
+    gap: 7px;
+  }
+  .cadastro-form-legislacao input,
+  .cadastro-form-legislacao textarea {
+    font-size: 0.97rem;
+    padding: 8px;
+  }
+  .cadastro-form-legislacao .btn-salvar {
+    padding: 9px 13px;
+    font-size: 0.97rem;
+  }
+  .lista-legislacao li {
+    padding: 12px 5px 40px 7px;
+    font-size: 0.98rem;
+  }
+  .lista-legislacao .btn-excluir {
+    padding: 6px 10px;
+    font-size: 0.94rem;
+    right: 8px;
+    bottom: 8px;
+  }
 }
