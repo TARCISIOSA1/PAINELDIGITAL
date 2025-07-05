@@ -478,7 +478,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="footer-institucional">
-        Câmara Municipal de Santa Maria, &copy; {new Date().getFullYear()} — Plenário Digit@L & Premium Legislativo, contato: 75 983310340 @ Goes, 75 991897595 @ Araujo.
+       SA tecnologia, &copy; {new Date().getFullYear()} — Plenário Digit@L & Premium Legislativo, contato: 75 983310340 Goes 75 991897595 @ Araujo.
       </footer>
     </Router>
   );
