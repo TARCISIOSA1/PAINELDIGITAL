@@ -3,84 +3,131 @@ import { db, storage } from "../firebase";
 import {
   collection,
   getDocs,
-  addDoc,
   updateDoc,
   doc,
+  deleteDoc,
+  addDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-export default function ParlamentaresCarousel() {
+export default function ParlamentaresTabela() {
   const [parlamentares, setParlamentares] = useState([]);
-  const [novo, setNovo] = useState({ nome: "", partido: "", id: "", fotoFile: null, fotoUrl: "" });
-  const [carregando, setCarregando] = useState(true);
+  const [editando, setEditando] = useState(null);
+  const [editForm, setEditForm] = useState({});
   const [addModal, setAddModal] = useState(false);
-  const [atualizando, setAtualizando] = useState(false);
-
-  // Controle do carrossel
-  const [start, setStart] = useState(0);
-  const maxPorVez = 6;
-
+  const [novo, setNovo] = useState({
+    nome: "", partido: "", id: "", numero: "", votos: "", status: "Ativo", fotoFile: null, fotoUrl: ""
+  });
+  const [loading, setLoading] = useState(true);
   const fileInputRef = useRef();
 
-  // Carrega parlamentares
+  // Carrega os parlamentares
   useEffect(() => {
-    async function fetchData() {
-      setCarregando(true);
+    async function carregar() {
+      setLoading(true);
       const snap = await getDocs(collection(db, "parlamentares"));
-      const lista = snap.docs.map((doc) => ({ ...doc.data(), docId: doc.id }));
+      const lista = snap.docs.map((doc) => ({
+        ...doc.data(),
+        docId: doc.id,
+      }));
       setParlamentares(lista);
-      setCarregando(false);
+      setLoading(false);
     }
-    fetchData();
-  }, [addModal, atualizando]);
+    carregar();
+  }, [addModal, editando]);
 
-  // Upload e obtém a URL da foto
-  async function uploadFoto(id, file) {
-    const storageRef = ref(storage, `parlamentares/${id}.jpg`);
-    await uploadBytes(storageRef, file);
-    return await getDownloadURL(storageRef);
-  }
-
-  // Adiciona novo parlamentar
+  // --- CADASTRO NOVO
   async function handleNovo(e) {
     e.preventDefault();
-    if (!novo.nome || !novo.id || !novo.fotoFile) {
-      alert("Preencha todos os campos e selecione uma foto!");
+    if (!novo.nome || !novo.id) {
+      alert("Preencha nome e ID!");
       return;
     }
-    setAtualizando(true);
-    try {
-      // Adiciona primeiro sem foto
-      const docRef = await addDoc(collection(db, "parlamentares"), {
-        nome: novo.nome,
-        partido: novo.partido,
-        id: novo.id,
-        fotoUrl: "",
-      });
-      // Faz upload da foto e atualiza doc
-      const url = await uploadFoto(novo.id, novo.fotoFile);
-      await updateDoc(doc(db, "parlamentares", docRef.id), { fotoUrl: url });
-      setAddModal(false);
-      setNovo({ nome: "", partido: "", id: "", fotoFile: null, fotoUrl: "" });
-    } catch (err) {
-      alert("Erro ao salvar parlamentar: " + err.message);
+    let fotoUrl = "";
+    if (novo.fotoFile) {
+      const storageRef = ref(storage, `parlamentares/${novo.id}.jpg`);
+      await uploadBytes(storageRef, novo.fotoFile);
+      fotoUrl = await getDownloadURL(storageRef);
     }
-    setAtualizando(false);
+    await addDoc(collection(db, "parlamentares"), {
+      nome: novo.nome,
+      partido: novo.partido,
+      id: novo.id,
+      numero: novo.numero,
+      votos: parseInt(novo.votos) || 0,
+      status: novo.status,
+      fotoUrl,
+    });
+    setAddModal(false);
+    setNovo({
+      nome: "", partido: "", id: "", numero: "", votos: "", status: "Ativo", fotoFile: null, fotoUrl: ""
+    });
   }
 
-  // Paginação do carrossel
-  function handlePrev() {
-    setStart((s) => Math.max(0, s - maxPorVez));
+  // --- EDIÇÃO
+  function startEdit(p) {
+    setEditando(p.docId);
+    setEditForm({
+      nome: p.nome,
+      numero: p.numero || "",
+      votos: p.votos || "",
+      partido: p.partido || "",
+      status: p.status || "Ativo",
+      fotoUrl: p.fotoUrl,
+      fotoFile: null,
+    });
   }
-  function handleNext() {
-    setStart((s) => Math.min(parlamentares.length - maxPorVez, s + maxPorVez));
+  function handleEditChange(e) {
+    setEditForm((f) => ({
+      ...f,
+      [e.target.name]: e.target.value,
+    }));
+  }
+  async function handleSalvarEditado() {
+    try {
+      let url = editForm.fotoUrl || "";
+      if (editForm.fotoFile) {
+        const storageRef = ref(storage, `parlamentares/${editando}.jpg`);
+        await uploadBytes(storageRef, editForm.fotoFile);
+        url = await getDownloadURL(storageRef);
+      }
+      await updateDoc(doc(db, "parlamentares", editando), {
+        nome: editForm.nome,
+        numero: editForm.numero,
+        votos: parseInt(editForm.votos) || 0,
+        partido: editForm.partido,
+        status: editForm.status,
+        fotoUrl: url,
+      });
+      setEditando(null);
+    } catch (e) {
+      alert("Erro ao salvar: " + e.message);
+    }
+  }
+  function handleFotoEdit(e) {
+    const file = e.target.files[0];
+    if (file) {
+      setEditForm((f) => ({
+        ...f,
+        fotoFile: file,
+        fotoUrl: URL.createObjectURL(file),
+      }));
+    }
+  }
+  async function handleExcluir(docId) {
+    if (window.confirm("Excluir este parlamentar?")) {
+      await deleteDoc(doc(db, "parlamentares", docId));
+      setParlamentares((lst) => lst.filter((p) => p.docId !== docId));
+    }
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: "30px auto", background: "#fff", borderRadius: 18, boxShadow: "0 4px 24px #0002", padding: 26 }}>
+    <div style={{
+      maxWidth: 1200, margin: "30px auto", background: "#fff", borderRadius: 14,
+      boxShadow: "0 4px 24px #0002", padding: 22, overflowX: "auto"
+    }}>
       <h2 style={{ textAlign: "center", color: "#17335a", fontSize: 32 }}>Parlamentares</h2>
-      <div style={{ textAlign: "right", margin: "12px 0" }}>
+      <div style={{ textAlign: "right", margin: "8px 0" }}>
         <button
           style={{ background: "#17335a", color: "#fff", border: "none", borderRadius: 8, padding: "8px 22px", fontWeight: 600 }}
           onClick={() => setAddModal(true)}
@@ -88,8 +135,6 @@ export default function ParlamentaresCarousel() {
           + Novo Parlamentar
         </button>
       </div>
-
-      {/* Modal de cadastro */}
       {addModal && (
         <div style={{
           position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "#0005",
@@ -102,7 +147,7 @@ export default function ParlamentaresCarousel() {
             <h3>Novo Parlamentar</h3>
             <div style={{ marginBottom: 12, display: "flex", justifyContent: "center" }}>
               <label style={{
-                width: 130, height: 130, borderRadius: 15, border: "2px dashed #17335a",
+                width: 110, height: 110, borderRadius: 12, border: "2px dashed #17335a",
                 overflow: "hidden", background: "#eee", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
               }}>
                 {novo.fotoFile ? (
@@ -119,7 +164,6 @@ export default function ParlamentaresCarousel() {
                   accept="image/*"
                   style={{ display: "none" }}
                   onChange={e => setNovo(f => ({ ...f, fotoFile: e.target.files[0] }))}
-                  ref={fileInputRef}
                 />
               </label>
             </div>
@@ -132,6 +176,14 @@ export default function ParlamentaresCarousel() {
               required
             />
             <input
+              name="id"
+              value={novo.id}
+              onChange={e => setNovo(f => ({ ...f, id: e.target.value }))}
+              placeholder="ID"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+              required
+            />
+            <input
               name="partido"
               value={novo.partido}
               onChange={e => setNovo(f => ({ ...f, partido: e.target.value }))}
@@ -139,102 +191,186 @@ export default function ParlamentaresCarousel() {
               style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
             />
             <input
-              name="id"
-              value={novo.id}
-              onChange={e => setNovo(f => ({ ...f, id: e.target.value }))}
-              placeholder="ID (Ex: TARCISIOSA1)"
-              style={{ marginBottom: 20, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
-              required
+              name="numero"
+              value={novo.numero}
+              onChange={e => setNovo(f => ({ ...f, numero: e.target.value }))}
+              placeholder="Número"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
             />
+            <input
+              name="votos"
+              value={novo.votos}
+              onChange={e => setNovo(f => ({ ...f, votos: e.target.value }))}
+              placeholder="Votos"
+              type="number"
+              style={{ marginBottom: 10, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+            />
+            <select
+              name="status"
+              value={novo.status}
+              onChange={e => setNovo(f => ({ ...f, status: e.target.value }))}
+              style={{ marginBottom: 18, width: "100%", padding: 9, borderRadius: 7, border: "1px solid #bbb" }}
+            >
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button type="button" onClick={() => setAddModal(false)} style={{ background: "#bbb", color: "#333", border: "none", borderRadius: 7, padding: "8px 22px" }}>
                 Cancelar
               </button>
-              <button type="submit" disabled={atualizando} style={{ background: "#17335a", color: "#fff", border: "none", borderRadius: 7, padding: "8px 22px" }}>
-                {atualizando ? "Salvando..." : "Salvar"}
+              <button type="submit" style={{ background: "#17335a", color: "#fff", border: "none", borderRadius: 7, padding: "8px 22px" }}>
+                Salvar
               </button>
             </div>
           </form>
         </div>
       )}
-
-      {carregando ? (
-        <div style={{ textAlign: "center", margin: 40 }}>Carregando...</div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
-          <button onClick={handlePrev} disabled={start === 0} style={{
-            background: "#17335a", color: "#fff", border: "none", borderRadius: 22, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, opacity: start === 0 ? 0.3 : 1
-          }}>
-            <FaChevronLeft />
-          </button>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gridTemplateRows: "repeat(2, 1fr)",
-              gap: 28,
-              width: "100%",
-              maxWidth: 950,
-              minHeight: 310,
-              padding: 12,
-              overflowX: "auto",
-            }}
-          >
-            {parlamentares.slice(start, start + maxPorVez).map((p, i) => (
-              <div
-                key={p.id + i}
-                style={{
-                  background: "#f5f7fa",
-                  borderRadius: 16,
-                  boxShadow: "0 2px 10px #0001",
-                  padding: 18,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  minWidth: 145,
-                  maxWidth: 230,
-                  width: "100%",
-                  minHeight: 140,
-                  position: "relative",
-                }}
-              >
-                <div style={{
-                  width: 100, height: 100, borderRadius: 15,
-                  overflow: "hidden", background: "#ccc", marginBottom: 14,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  border: "2px solid #17335a"
-                }}>
-                  {p.fotoUrl ? (
-                    <img src={p.fotoUrl} alt={p.nome} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <span style={{ color: "#888", fontSize: 26 }}>Sem Foto</span>
-                  )}
-                </div>
-                <div style={{ fontWeight: "bold", fontSize: 18, color: "#17335a", textAlign: "center" }}>{p.nome}</div>
-                <div style={{ color: "#444", fontSize: 15, margin: "2px 0 0 0", textAlign: "center" }}>{p.partido}</div>
-                <div style={{
-                  marginTop: 10,
-                  color: "#17335a",
-                  background: "#e8ecf3",
-                  borderRadius: 6,
-                  padding: "2px 10px",
-                  fontWeight: 600,
-                  fontSize: 15,
-                  letterSpacing: 0.5,
-                  border: "1.5px solid #17335a"
-                }}>
-                  ID: {p.id}
-                </div>
-              </div>
-            ))}
-          </div>
-          <button onClick={handleNext} disabled={start + maxPorVez >= parlamentares.length} style={{
-            background: "#17335a", color: "#fff", border: "none", borderRadius: 22, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, opacity: start + maxPorVez >= parlamentares.length ? 0.3 : 1
-          }}>
-            <FaChevronRight />
-          </button>
-        </div>
-      )}
+      <div style={{ overflowX: "auto" }}>
+        <table style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: 17,
+          minWidth: 900
+        }}>
+          <thead>
+            <tr style={{ background: "#e7eefa" }}>
+              <th style={th}>ID</th>
+              <th style={th}>Foto</th>
+              <th style={th}>Nome</th>
+              <th style={th}>Número</th>
+              <th style={th}>Votos</th>
+              <th style={th}>Sigla Partido</th>
+              <th style={th}>Status</th>
+              <th style={th}>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr><td colSpan={8} style={{ textAlign: "center", padding: 30 }}>Carregando...</td></tr>
+            ) : (
+              parlamentares.map((p) => (
+                <tr key={p.docId} style={{ background: editando === p.docId ? "#f2f7fc" : "#fff" }}>
+                  <td style={td}>{p.docId}</td>
+                  <td style={td}>
+                    <div style={{
+                      width: 60, height: 60, borderRadius: 10, background: "#eee",
+                      display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden",
+                      border: "2px solid #17335a", margin: "0 auto"
+                    }}>
+                      {editando === p.docId ? (
+                        <>
+                          <label style={{
+                            width: "100%", height: "100%", cursor: "pointer"
+                          }}>
+                            <img
+                              src={editForm.fotoUrl || "https://via.placeholder.com/64?text=Sem+Foto"}
+                              alt={editForm.nome}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                            />
+                            <input
+                              type="file"
+                              accept="image/*"
+                              style={{ display: "none" }}
+                              onChange={handleFotoEdit}
+                              ref={fileInputRef}
+                            />
+                          </label>
+                        </>
+                      ) : (
+                        <img
+                          src={p.fotoUrl || "https://via.placeholder.com/64?text=Sem+Foto"}
+                          alt={p.nome}
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      )}
+                    </div>
+                  </td>
+                  <td style={td}>
+                    {editando === p.docId ? (
+                      <input value={editForm.nome} name="nome" onChange={handleEditChange}
+                        style={inputEstilo} />
+                    ) : p.nome}
+                  </td>
+                  <td style={td}>
+                    {editando === p.docId ? (
+                      <input value={editForm.numero} name="numero" onChange={handleEditChange}
+                        style={inputEstilo} />
+                    ) : p.numero || ""}
+                  </td>
+                  <td style={td}>
+                    {editando === p.docId ? (
+                      <input value={editForm.votos} name="votos" onChange={handleEditChange}
+                        style={inputEstilo} type="number" min="0" />
+                    ) : p.votos || ""}
+                  </td>
+                  <td style={td}>
+                    {editando === p.docId ? (
+                      <input value={editForm.partido} name="partido" onChange={handleEditChange}
+                        style={inputEstilo} />
+                    ) : p.partido}
+                  </td>
+                  <td style={td}>
+                    {editando === p.docId ? (
+                      <select name="status" value={editForm.status} onChange={handleEditChange} style={inputEstilo}>
+                        <option value="Ativo">Ativo</option>
+                        <option value="Inativo">Inativo</option>
+                      </select>
+                    ) : (
+                      <span style={{
+                        color: p.status === "Ativo" ? "#219a15" : "#c72525",
+                        fontWeight: 700
+                      }}>{p.status}</span>
+                    )}
+                  </td>
+                  <td style={td}>
+                    {editando === p.docId ? (
+                      <>
+                        <button onClick={handleSalvarEditado} style={btnSalvar}>Salvar</button>
+                        <button onClick={() => setEditando(null)} style={btnCancelar}>Cancelar</button>
+                      </>
+                    ) : (
+                      <>
+                        <button onClick={() => startEdit(p)} style={btnEditar}>Editar</button>
+                        <button onClick={() => handleExcluir(p.docId)} style={btnExcluir}>Excluir</button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
+
+// --- ESTILOS
+const th = {
+  padding: "10px 7px",
+  background: "#e3e8f6",
+  color: "#17335a",
+  fontWeight: 700,
+  borderBottom: "2px solid #b5bddf",
+};
+const td = {
+  padding: "7px 7px",
+  textAlign: "center",
+  borderBottom: "1.5px solid #f0f1f8",
+  verticalAlign: "middle"
+};
+const inputEstilo = {
+  width: "90%", padding: 7, borderRadius: 6, border: "1px solid #bbb", fontSize: 16,
+};
+const btnEditar = {
+  background: "#2764cc", color: "#fff", border: "none", borderRadius: 7, padding: "5px 15px", marginRight: 7, cursor: "pointer"
+};
+const btnExcluir = {
+  background: "#c72525", color: "#fff", border: "none", borderRadius: 7, padding: "5px 12px", cursor: "pointer"
+};
+const btnSalvar = {
+  background: "#219a15", color: "#fff", border: "none", borderRadius: 7, padding: "5px 13px", marginRight: 7, cursor: "pointer"
+};
+const btnCancelar = {
+  background: "#888", color: "#fff", border: "none", borderRadius: 7, padding: "5px 13px", cursor: "pointer"
+};
