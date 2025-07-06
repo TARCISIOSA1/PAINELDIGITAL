@@ -1,13 +1,9 @@
-// PainelVotacaoIA.jsx
-import React, { useEffect, useState } from "react";
+// src/components/PainelVotacaoIA.jsx
+import React, { useEffect, useState, useRef } from "react";
+import { doc, onSnapshot, collection, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
-import {
-  doc,
-  onSnapshot,
-  collection,
-  getDocs
-} from "firebase/firestore";
 import TopoInstitucional from "./TopoInstitucional";
+import panelConfig from "../config/panelConfig.json";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -20,115 +16,120 @@ import {
 } from "chart.js";
 import "./PainelVotacaoIA.css";
 
+// Registrar os componentes do Chart.js
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function PainelVotacaoIA() {
   const [painel, setPainel] = useState(null);
   const [presentes, setPresentes] = useState([]);
-  const [mensagemIA, setMensagemIA] = useState("Aguardando sessão...");
+  const [legenda, setLegenda] = useState("");
+  const painelRef = useRef(null);
 
+  // Assinar painelAtivo/ativo
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "painelAtivo", "ativo"), async (docSnap) => {
-      const data = docSnap.data();
-      setPainel(data);
-      setMensagemIA(definirMensagemIA(data));
+    const unsub = onSnapshot(doc(db, "painelAtivo", "ativo"), snap => {
+      if (snap.exists()) setPainel(snap.data());
     });
     return () => unsub();
   }, []);
 
+  // Carregar detalhes dos presentes
   useEffect(() => {
-    async function carregarPresentesCompletos() {
-      if (!painel?.presentes || painel.presentes.length === 0) {
+    async function fetchPresentes() {
+      if (!painel?.presentes?.length) {
         setPresentes([]);
         return;
       }
-
       const snap = await getDocs(collection(db, "parlamentares"));
-      const todos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const completos = painel.presentes
-        .map(id => todos.find(p => p.id === id))
-        .filter(Boolean);
-      setPresentes(completos);
+      const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const filtros = painel.presentes.map(id => todos.find(p => p.id === id)).filter(Boolean);
+      setPresentes(filtros);
     }
-
-    carregarPresentesCompletos();
+    fetchPresentes();
   }, [painel?.presentes]);
 
-  function definirMensagemIA(data) {
-    if (!data) return "Aguardando sessão...";
-    if (data.tribunaAtual?.nome) return `Tribuna ativa: ${data.tribunaAtual.nome}`;
-    if (data.votacaoAtual?.status === "em_votacao") return `Votação em andamento: ${data.votacaoAtual.materia}`;
-    if (data.statusSessao === "Ativa") return "Sessão em andamento.";
-    return "Aguardando sessão...";
+  // Mensagem IA dinâmica
+  function getMensagemIA() {
+    if (!painel) return "Carregando painel...";
+    if (painel.tribunaAtual?.nome) return `Tribuna ativa: ${painel.tribunaAtual.nome}`;
+    if (painel.votacaoAtual?.status === "em_votacao") return `Votação em andamento: ${painel.votacaoAtual.materia}`;
+    if (painel.statusSessao === "Ativa") return "Sessão em andamento.";
+    return "Aguardando início da sessão...";
   }
 
-  const dataVotacao = {
-    labels: Object.keys(painel?.votacaoAtual?.votos || {}),
-    datasets: [
-      {
-        label: "Votos",
-        data: Object.values(painel?.votacaoAtual?.votos || {}),
-        backgroundColor: "#2563eb"
-      }
-    ]
+  // Fullscreen automático quando tribuna ou votação
+  useEffect(() => {
+    const elem = painelRef.current;
+    if (!elem) return;
+    if (painel?.tribunaAtual?.cronometroAtivo || painel?.votacaoAtual?.status === "em_votacao") {
+      if (elem.requestFullscreen) elem.requestFullscreen();
+    } else {
+      if (document.fullscreenElement) document.exitFullscreen();
+    }
+  }, [painel?.tribunaAtual, painel?.votacaoAtual]);
+
+  // CSS modo noturno
+  const isNoite = new Date().getHours() >= 18;
+
+  // Dados para gráfico
+  const votos = painel?.votacaoAtual?.votos || {};
+  const totalSim = Object.values(votos).filter(v => v === "Sim").length;
+  const totalNao = Object.values(votos).filter(v => v === "Não").length;
+  const totalAbs = Object.values(votos).filter(v => v === "Abstenção").length;
+  const dataGrafico = {
+    labels: ["Sim", "Não", "Abstenção"],
+    datasets: [{ label: "Votos", data: [totalSim, totalNao, totalAbs] }]
   };
 
   return (
-    <div className="painel-votacao">
-      <TopoInstitucional />
-
-      <div className="mensagem-ia">
-        <strong>{mensagemIA}</strong>
-      </div>
+    <div ref={painelRef} className={isNoite ? "painel-noite" : "painel-dia"}>
+      <TopoInstitucional config={panelConfig} />
+      <div className="mensagem-ia">{getMensagemIA()}</div>
 
       <section className="sessao-info">
-        <h2>Informações da Sessão</h2>
-        <p><b>Data:</b> {painel?.data} | <b>Hora:</b> {painel?.hora}</p>
-        <p><b>Local:</b> {painel?.local || "—"}</p>
-        <p><b>Presidente:</b> {painel?.presidente || "—"} | <b>Secretário:</b> {painel?.secretario || "—"}</p>
-        <p><b>Status:</b> <span className="status">{painel?.statusSessao}</span> | <b>Título:</b> {painel?.titulo || "—"}</p>
+        <h2>{painel?.titulo || "Painel Plenária"}</h2>
+        <p><b>Data:</b> {painel?.data || '-'} | <b>Hora:</b> {painel?.hora || '-'}</p>
+        <p><b>Local:</b> {painel?.local || '—'}</p>
+        <p><b>Presidente:</b> {painel?.presidente || '—'} | <b>Secretário:</b> {painel?.secretario || '—'}</p>
+        <p><b>Status:</b> {painel?.statusSessao || '—'}</p>
       </section>
 
-      <section className="parlamentares-presentes">
-        <h2>Parlamentares Presentes</h2>
-        <div className="etiquetas-container">
-          {presentes.length === 0 ? (
-            <p>Nenhum parlamentar habilitado</p>
-          ) : (
-            presentes.map(p => (
-              <div key={p.id} className="etiqueta">
-                <img src={p.foto} alt={p.nome} />
-                <div>
-                  <strong>{p.nome}</strong>
-                  <small>{p.partido}</small>
-                </div>
-              </div>
-            ))
-          )}
+      <section className="presentes">
+        <h3>Presentes ({presentes.length})</h3>
+        <div className="etiquetas">
+          {presentes.map(p => (
+            <div key={p.id} className="etiqueta">
+              <img src={p.foto} alt={p.nome} />
+              <span>{p.nome}</span>
+              <small>{p.partido}</small>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section className="tribuna">
-        <h2>Tribuna</h2>
+      <section className="tribuna-destaque">
+        <h3>Tribuna</h3>
         {painel?.tribunaAtual?.nome ? (
-          <div className="tribuna-orador tribuna-expandida">
-            <img src={painel.tribunaAtual?.foto} alt={painel.tribunaAtual?.nome} />
+          <div className="destaque">
+            <img src={painel.tribunaAtual.fotoURL || '/default.png'} alt={painel.tribunaAtual.nome} />
             <div>
-              <h3>{painel.tribunaAtual.nome}</h3>
-              <p>{painel.tribunaAtual.partido}</p>
+              <h4>{painel.tribunaAtual.nome}</h4>
+              <p>{painel.tribunaAtual.partido || '—'}</p>
+              <p>Tempo: {painel.tribunaAtual.tempoRestante}s</p>
             </div>
           </div>
-        ) : (
-          <p>Sem orador na tribuna.</p>
-        )}
+        ) : <p>Sem orador na tribuna.</p>}
       </section>
 
       <section className="votacao">
-        <h2>Votação</h2>
-        <p><b>Matéria:</b> {painel?.votacaoAtual?.materia || "—"}</p>
-        <p><b>Autor:</b> {painel?.votacaoAtual?.autor || "—"}</p>
-        <Bar data={dataVotacao} />
+        <h3>Votação</h3>
+        <p><b>Matéria:</b> {painel?.votacaoAtual?.materia || '—'}</p>
+        <p><b>Autor:</b> {painel?.votacaoAtual?.autor || '—'}</p>
+        {painel?.votacaoAtual?.status === 'em_votacao' ? (
+          <Bar data={dataGrafico} />
+        ) : <p>Status: {painel?.votacaoAtual?.status || '—'}</p>}
       </section>
+
     </div>
   );
 }
