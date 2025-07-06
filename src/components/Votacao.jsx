@@ -12,6 +12,8 @@ import TopoInstitucional from "./TopoInstitucional";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 import "./Votacao.css";
 
+// ---------------------
+// REGRAS DE QUÓRUM
 const QUORUM_OPTIONS = [
   { label: "Quórum Simples", value: "simples", regra: "Maioria simples dos presentes (n/2 + 1)", formula: n => Math.ceil(n / 2) },
   { label: "Quórum de Suspensão", value: "suspensao", regra: "1/3 dos vereadores", formula: n => Math.ceil(n / 3) },
@@ -19,10 +21,13 @@ const QUORUM_OPTIONS = [
   { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
 ];
 
-// CENTRAL - SEMPRE PERSISTE habilitados!
+// CENTRAL: Sempre salva o estado ATUAL no painelAtivo
 async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao, votacaoAtualExtra = {}) {
   if (!sessao) return;
   const painelRef = doc(db, "painelAtivo", "ativo");
+  const habsFinal = votacaoAtualExtra.habilitados !== undefined
+    ? votacaoAtualExtra.habilitados
+    : (habilitados || []);
   await setDoc(
     painelRef,
     {
@@ -39,9 +44,7 @@ async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao,
         tipo: sessao.tipoVotacao || "Simples",
         autor: materias?.find(m => m.status === "em_votacao")?.autor || "-",
         status: votacaoAtualExtra.status || "preparando",
-        habilitados: votacaoAtualExtra.habilitados !== undefined
-          ? votacaoAtualExtra.habilitados
-          : habilitados || [],
+        habilitados: habsFinal,
         votos: votacaoAtualExtra.votos || {},
         tempoVotacao: votacaoAtualExtra.tempoVotacao || 60,
         ...votacaoAtualExtra
@@ -64,7 +67,6 @@ export default function Votacao() {
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
 
-  // Desempate
   const [emDesempate, setEmDesempate] = useState(false);
   const [votoDesempate, setVotoDesempate] = useState(null);
   const [presidente, setPresidente] = useState(null);
@@ -86,7 +88,7 @@ export default function Votacao() {
   const [numeroSessaoOrdinaria, setNumeroSessaoOrdinaria] = useState(0);
   const [numeroSessaoLegislativa, setNumeroSessaoLegislativa] = useState(0);
 
-  // IA/ATA
+  // IA
   const [ataCorrigida, setAtaCorrigida] = useState("");
   const [carregandoAta, setCarregandoAta] = useState(false);
   const [perguntaIA, setPerguntaIA] = useState("");
@@ -96,7 +98,8 @@ export default function Votacao() {
   // Tempo votação (pode ser customizado)
   const [tempoVotacao, setTempoVotacao] = useState(60);
 
-  // --- Inicialização
+  // -----------------------------------
+  // Carregar tudo ao iniciar
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -132,54 +135,50 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
-  // Sincroniza painelAtivo ao mudar os principais
   useEffect(() => {
     if (sessaoAtiva) {
       atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {});
     }
   }, [sessaoAtiva, materias, habilitados]);
 
-  // --- INICIALIZAÇÃO + CORREÇÃO: PERSISTE HABILITADOS APÓS F5
-const carregarSessaoAtivaOuPrevista = async () => {
-  const snapshot = await getDocs(collection(db, "sessoes"));
-  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  let sessao = lista.find((s) => s.status === "Ativa");
-  if (!sessao) {
-    sessao = lista.find((s) =>
-      ["Prevista", "Suspensa", "Pausada"].includes(s.status)
-    );
-  }
-  setSessaoAtiva(sessao || null);
-  setMaterias(sessao?.ordemDoDia || []);
-  setMateriasSelecionadas(sessao?.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-  setTipoVotacao(sessao?.tipoVotacao || "Simples");
-  setModalidade(sessao?.modalidade || "Unica");
-  setPresidente(sessao?.presidente || "");
-
-  // ==== CORREÇÃO CRUCIAL ====
-  try {
-    const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
-    const habilitadosPainel = painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados;
-    if (habilitadosPainel && habilitadosPainel.length > 0) {
-      setHabilitados(habilitadosPainel);
-    } else if (sessao?.presentes?.length) {
-      setHabilitados(sessao.presentes.map((p) => p.id));
-      await atualizarPainelAtivo(
-        sessao,
-        sessao.ordemDoDia || [],
-        sessao.presentes.map((p) => p.id),
-        sessao.status,
-        { habilitados: sessao.presentes.map((p) => p.id) }
+  // ----------- CORREÇÃO PRINCIPAL AQUI -----------
+  const carregarSessaoAtivaOuPrevista = async () => {
+    const snapshot = await getDocs(collection(db, "sessoes"));
+    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let sessao = lista.find((s) => s.status === "Ativa");
+    if (!sessao) {
+      sessao = lista.find((s) =>
+        ["Prevista", "Suspensa", "Pausada"].includes(s.status)
       );
-    } else {
-      setHabilitados([]);
-      // **NÃO sobrescreva no Firestore se não precisa!**
     }
-  } catch (e) {
-    setHabilitados(sessao?.presentes?.map((p) => p.id) || []);
-  }
-};
+    setSessaoAtiva(sessao || null);
+    setMaterias(sessao?.ordemDoDia || []);
+    setMateriasSelecionadas(sessao?.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+    setTipoVotacao(sessao?.tipoVotacao || "Simples");
+    setModalidade(sessao?.modalidade || "Unica");
+    setPresidente(sessao?.presidente || "");
 
+    try {
+      const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
+      const habsPainel = painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados;
+      if (habsPainel && habsPainel.length > 0) {
+        setHabilitados(habsPainel);
+      } else if (sessao?.presentes?.length) {
+        setHabilitados(sessao.presentes.map((p) => p.id));
+        await atualizarPainelAtivo(
+          sessao,
+          sessao.ordemDoDia || [],
+          sessao.presentes.map((p) => p.id),
+          sessao.status,
+          { habilitados: sessao.presentes.map((p) => p.id) }
+        );
+      } else {
+        setHabilitados([]);
+      }
+    } catch (e) {
+      setHabilitados(sessao?.presentes?.map((p) => p.id) || []);
+    }
+  };
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
@@ -208,9 +207,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
       novoStatus
     );
     if (novoStatus === "Encerrada") {
-      // Gera ATA COMPLETA!
-      await gerarAtaCompletaFinal(sessaoAtiva?.id);
-      // LIMPA TUDO
+      await gerarAtaCorrigida();
       setSessaoAtiva(null);
       setMaterias([]);
       setMateriasSelecionadas([]);
@@ -219,49 +216,11 @@ const carregarSessaoAtivaOuPrevista = async () => {
       setStatusVotacao("Preparando");
       setRespostaIA("");
       setAtaCorrigida("");
-      setHabilitados([]);
       for (let id of Object.keys(bancoHoras)) {
         await setDoc(doc(db, "bancoHoras", id), { tempo: 0 }, { merge: true });
       }
-      // Limpa painelAtivo!
-      await setDoc(doc(db, "painelAtivo", "ativo"), {
-        titulo: "-",
-        data: "",
-        hora: "",
-        presidente: "",
-        secretario: "",
-        statusSessao: "-",
-        ordemDoDia: [],
-        votacaoAtual: {},
-        tribunaAtual: {},
-      });
     }
   };
-
-  // Gera ATA FINAL COMPLETA com falas, legendas e tudo
-  async function gerarAtaCompletaFinal(sessaoId) {
-    setCarregandoAta(true);
-    setAtaCorrigida("Gerando ata completa...");
-    try {
-      const res = await fetch("http://localhost:3334/api/atasFalas/gerarAtaFinalCompleta", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessaoId }),
-      });
-      const json = await res.json();
-      setAtaCorrigida(json.ataCompleta || "Falha ao gerar ata.");
-      // Salva no banco, se desejar:
-      if (sessaoId && json.ataCompleta) {
-        await updateDoc(doc(db, "sessoes", sessaoId), {
-          ata: json.ataCompleta,
-          ataDataGeracao: new Date().toISOString(),
-        });
-      }
-    } catch (err) {
-      setAtaCorrigida("Falha ao gerar ata.");
-    }
-    setCarregandoAta(false);
-  }
 
   const iniciarSessao = async () => {
     if (!sessaoAtiva) return;
@@ -363,7 +322,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
       else if (v === "Não") votosNao++;
       else votosAbstencao++;
     });
-    // EMPATE?
     if (votosSim === votosNao && votosSim > 0) {
       setEmDesempate(true);
       setStatusVotacao("Desempate");
@@ -408,7 +366,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
     setVotoDesempate(null);
   };
 
-  // --------- DESEMPATE
+  // ---------- REGISTRAR VOTO DE DESEMPATE
   const finalizarDesempate = async (votoPresidente) => {
     const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
     let votos = {};
@@ -476,16 +434,34 @@ const carregarSessaoAtivaOuPrevista = async () => {
     }
   };
 
-  // --- CONTROLE DOS HABILITADOS
+  // --- CONTROLE DOS HABILITADOS ---
   const handleHabilitar = async (id) => {
-    const novo = habilitados.includes(id)
-      ? habilitados.filter((x) => x !== id)
-      : [...habilitados, id];
+    let novo;
+    if (habilitados.includes(id)) {
+      novo = habilitados.filter((x) => x !== id);
+    } else {
+      novo = [...habilitados, id];
+    }
     setHabilitados(novo);
+    // Sempre salve corretamente no painelAtivo!
     await atualizarPainelAtivo(sessaoAtiva, materias, novo, sessaoAtiva?.status, { habilitados: novo });
   };
 
-  // --- INTELIGÊNCIA ARTIFICIAL - PERGUNTE À IA
+  // ---------------- INTELIGÊNCIA ARTIFICIAL ----------------
+  async function gerarAtaCorrigida() {
+    setCarregandoAta(true);
+    setAtaCorrigida("Gerando ata automática...");
+    const sessaoId = sessaoAtiva?.id;
+    const data = sessaoAtiva?.data;
+    const res = await fetch("http://localhost:3334/api/atasFalas/gerarAtaCorrigida", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessaoId, data }),
+    });
+    const json = await res.json();
+    setAtaCorrigida(json.ataCorrigida || "Falha ao gerar ata.");
+    setCarregandoAta(false);
+  }
   async function perguntarIA() {
     setCarregandoPergunta(true);
     setRespostaIA("Consultando IA...");
@@ -499,7 +475,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
     setCarregandoPergunta(false);
   }
 
-  // --- TRIBUNA
+  // ------------------- TRIBUNA -------------------
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (cronometroAtivo && tempoRestante > 0) {
@@ -679,14 +655,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
                 ▶ Retomar Sessão
               </button>
             </div>
-            {ataCorrigida && (
-              <div style={{ marginTop: 20 }}>
-                <h4>📝 Ata Completa da Sessão</h4>
-                <div className="ia-bloco-resposta">
-                  <pre style={{ whiteSpace: "pre-wrap" }}>{ataCorrigida}</pre>
-                </div>
-              </div>
-            )}
           </div>
         );
       case "Controle de Votação":
@@ -956,7 +924,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
             <div className="area-ia-flex">
               <div style={{ flex: 1, marginRight: 18 }}>
                 <b>Gerar Ata Corrigida:</b><br />
-                <button className="botao-azul" onClick={() => gerarAtaCompletaFinal(sessaoAtiva?.id)} disabled={carregandoAta}>
+                <button className="botao-azul" onClick={gerarAtaCorrigida} disabled={carregandoAta}>
                   {carregandoAta ? "Gerando..." : "Gerar Ata"}
                 </button>
                 {ataCorrigida && (
@@ -1001,9 +969,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
         presidente={sessaoAtiva?.presidente}
         data={sessaoAtiva?.data}
       />
-
       <h2 className="painel-titulo">Painel de Controle de Sessões Plenárias</h2>
-
       <div className="abas-votacao">
         {["Controle de Sessão", "Controle de Votação", "Controle de Tribuna", "Controle de Presença", "IA"].map(tab => (
           <button
@@ -1013,7 +979,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
           >{tab}</button>
         ))}
       </div>
-
       <div className="conteudo-aba">
         {renderConteudoAba()}
       </div>
