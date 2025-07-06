@@ -21,13 +21,10 @@ const QUORUM_OPTIONS = [
   { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
 ];
 
-// CENTRAL: Sempre salva o estado ATUAL no painelAtivo
+// UTILITÁRIO CENTRAL: Sincroniza painelAtivo com sessão ativa SEMPRE!
 async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao, votacaoAtualExtra = {}) {
   if (!sessao) return;
   const painelRef = doc(db, "painelAtivo", "ativo");
-  const habsFinal = votacaoAtualExtra.habilitados !== undefined
-    ? votacaoAtualExtra.habilitados
-    : (habilitados || []);
   await setDoc(
     painelRef,
     {
@@ -44,7 +41,7 @@ async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao,
         tipo: sessao.tipoVotacao || "Simples",
         autor: materias?.find(m => m.status === "em_votacao")?.autor || "-",
         status: votacaoAtualExtra.status || "preparando",
-        habilitados: habsFinal,
+        habilitados: votacaoAtualExtra.habilitados || habilitados || [],
         votos: votacaoAtualExtra.votos || {},
         tempoVotacao: votacaoAtualExtra.tempoVotacao || 60,
         ...votacaoAtualExtra
@@ -56,6 +53,8 @@ async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao,
 
 export default function Votacao() {
   const [aba, setAba] = useState("Controle de Sessão");
+
+  // ESTADOS GERAIS
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
   const [materias, setMaterias] = useState([]);
   const [materiasSelecionadas, setMateriasSelecionadas] = useState([]);
@@ -67,6 +66,7 @@ export default function Votacao() {
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
 
+  // Desempate
   const [emDesempate, setEmDesempate] = useState(false);
   const [votoDesempate, setVotoDesempate] = useState(null);
   const [presidente, setPresidente] = useState(null);
@@ -95,11 +95,10 @@ export default function Votacao() {
   const [respostaIA, setRespostaIA] = useState("");
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
-  // Tempo votação (pode ser customizado)
+  // Tempo votação
   const [tempoVotacao, setTempoVotacao] = useState(60);
 
-  // -----------------------------------
-  // Carregar tudo ao iniciar
+  // Carrega tudo ao abrir
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -135,48 +134,42 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
-  useEffect(() => {
-    if (sessaoAtiva) {
-      atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {});
-    }
-  }, [sessaoAtiva, materias, habilitados]);
+  // NÃO ATUALIZA habilitados no painelAtivo automaticamente ao abrir, só manualmente ao marcar/desmarcar!
 
-  // ----------- CORREÇÃO PRINCIPAL AQUI -----------
+  // ---- Carregamento inicial: pega os habilitados DIRETO do painelAtivo
   const carregarSessaoAtivaOuPrevista = async () => {
     const snapshot = await getDocs(collection(db, "sessoes"));
     const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    let sessao = lista.find((s) => s.status === "Ativa");
-    if (!sessao) {
-      sessao = lista.find((s) =>
-        ["Prevista", "Suspensa", "Pausada"].includes(s.status)
-      );
-    }
-    setSessaoAtiva(sessao || null);
-    setMaterias(sessao?.ordemDoDia || []);
-    setMateriasSelecionadas(sessao?.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-    setTipoVotacao(sessao?.tipoVotacao || "Simples");
-    setModalidade(sessao?.modalidade || "Unica");
-    setPresidente(sessao?.presidente || "");
-
-    try {
-      const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
-      const habsPainel = painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados;
-      if (habsPainel && habsPainel.length > 0) {
-        setHabilitados(habsPainel);
-      } else if (sessao?.presentes?.length) {
-        setHabilitados(sessao.presentes.map((p) => p.id));
-        await atualizarPainelAtivo(
-          sessao,
-          sessao.ordemDoDia || [],
-          sessao.presentes.map((p) => p.id),
-          sessao.status,
-          { habilitados: sessao.presentes.map((p) => p.id) }
-        );
-      } else {
-        setHabilitados([]);
+    let sessao = lista.find((s) => s.status === "Ativa") ||
+      lista.find((s) => ["Prevista", "Suspensa", "Pausada"].includes(s.status));
+    if (sessao) {
+      setSessaoAtiva(sessao);
+      setMaterias(sessao.ordemDoDia || []);
+      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+      setTipoVotacao(sessao.tipoVotacao || "Simples");
+      setModalidade(sessao.modalidade || "Unica");
+      setPresidente(sessao.presidente || "");
+      // Pega habilitados do painelAtivo/ativo (nunca sobrescreve!)
+      try {
+        const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
+        if (painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados) {
+          setHabilitados(painelDoc.data().votacaoAtual.habilitados);
+        } else if (sessao.presentes?.length) {
+          setHabilitados(sessao.presentes.map((p) => p.id));
+        } else {
+          setHabilitados([]);
+        }
+      } catch (e) {
+        setHabilitados(sessao.presentes?.map((p) => p.id) || []);
       }
-    } catch (e) {
-      setHabilitados(sessao?.presentes?.map((p) => p.id) || []);
+    } else {
+      setSessaoAtiva(null);
+      setMaterias([]);
+      setMateriasSelecionadas([]);
+      setTipoVotacao("Simples");
+      setModalidade("Unica");
+      setStatusVotacao("Preparando");
+      setHabilitados([]);
     }
   };
 
@@ -311,24 +304,30 @@ export default function Votacao() {
   // -------------- ENCERRAR VOTAÇÃO ------------------
   const encerrarVotacao = async () => {
     if (!sessaoAtiva || materiasSelecionadas.length === 0) return;
+
+    // Busca os votos registrados no painelAtivo
     const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
     let votos = {};
     if (painelSnap.exists()) {
       votos = painelSnap.data().votacaoAtual?.votos || {};
     }
+
+    // Contagem dos votos atuais
     let votosSim = 0, votosNao = 0, votosAbstencao = 0;
     Object.values(votos).forEach(v => {
       if (v === "Sim") votosSim++;
       else if (v === "Não") votosNao++;
       else votosAbstencao++;
     });
+
+    // ---------- EMPATE? -----------
     if (votosSim === votosNao && votosSim > 0) {
       setEmDesempate(true);
       setStatusVotacao("Desempate");
       await atualizarPainelAtivo(
         sessaoAtiva,
         materias,
-        [presidente],
+        [presidente], // Apenas presidente habilitado
         sessaoAtiva.status,
         {
           status: "desempate",
@@ -340,6 +339,8 @@ export default function Votacao() {
       alert("Empate! Aguardando voto de desempate do presidente.");
       return;
     }
+
+    // ---------- SE NÃO EMPATE, encerra normalmente
     let novaOrdem = (materias || []).map((m) =>
       materiasSelecionadas.includes(m.id) ? { ...m, status: "votada" } : m
     );
@@ -366,7 +367,7 @@ export default function Votacao() {
     setVotoDesempate(null);
   };
 
-  // ---------- REGISTRAR VOTO DE DESEMPATE
+  // ---------- REGISTRAR VOTO DE DESEMPATE --------------
   const finalizarDesempate = async (votoPresidente) => {
     const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
     let votos = {};
@@ -374,6 +375,14 @@ export default function Votacao() {
       votos = painelSnap.data().votacaoAtual?.votos || {};
     }
     votos[presidente] = votoPresidente;
+
+    let votosSim = 0, votosNao = 0, votosAbstencao = 0;
+    Object.values(votos).forEach(v => {
+      if (v === "Sim") votosSim++;
+      else if (v === "Não") votosNao++;
+      else votosAbstencao++;
+    });
+
     let novaOrdem = (materias || []).map((m) =>
       materiasSelecionadas.includes(m.id) ? { ...m, status: "votada" } : m
     );
@@ -434,17 +443,17 @@ export default function Votacao() {
     }
   };
 
-  // --- CONTROLE DOS HABILITADOS ---
+  // --- CONTROLE DOS HABILITADOS: só muda ao marcar/desmarcar
   const handleHabilitar = async (id) => {
-    let novo;
-    if (habilitados.includes(id)) {
-      novo = habilitados.filter((x) => x !== id);
-    } else {
-      novo = [...habilitados, id];
-    }
+    const novo = habilitados.includes(id)
+      ? habilitados.filter((x) => x !== id)
+      : [...habilitados, id];
     setHabilitados(novo);
-    // Sempre salve corretamente no painelAtivo!
-    await atualizarPainelAtivo(sessaoAtiva, materias, novo, sessaoAtiva?.status, { habilitados: novo });
+    // Salva IMEDIATAMENTE no painelAtivo/ativo/votacaoAtual/habilitados
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    await updateDoc(painelRef, {
+      "votacaoAtual.habilitados": novo,
+    });
   };
 
   // ---------------- INTELIGÊNCIA ARTIFICIAL ----------------
@@ -569,6 +578,7 @@ export default function Votacao() {
   const encerrarTempo = async () => {
     if (tempoSalvo || !cronometroAtivo) return;
     setCronometroAtivo(false);
+
     if (oradorSelecionado && oradorSelecionado !== "externo" && !usarSaldo) {
       const saldoAnterior = bancoHoras[oradorSelecionado] || 0;
       const novoSaldo = saldoAnterior + tempoRestante;
@@ -579,6 +589,7 @@ export default function Votacao() {
       );
       setBancoHoras((prev) => ({ ...prev, [oradorSelecionado]: novoSaldo }));
     }
+
     setTempoRestante(0);
     setTempoSalvo(true);
     const painelRef = doc(db, "painelAtivo", "ativo");
@@ -961,6 +972,7 @@ export default function Votacao() {
     }
   }
 
+  // ------------------- RENDER PRINCIPAL -------------------
   return (
     <div className="votacao-container">
       <TopoInstitucional
@@ -969,7 +981,9 @@ export default function Votacao() {
         presidente={sessaoAtiva?.presidente}
         data={sessaoAtiva?.data}
       />
+
       <h2 className="painel-titulo">Painel de Controle de Sessões Plenárias</h2>
+
       <div className="abas-votacao">
         {["Controle de Sessão", "Controle de Votação", "Controle de Tribuna", "Controle de Presença", "IA"].map(tab => (
           <button
@@ -979,6 +993,7 @@ export default function Votacao() {
           >{tab}</button>
         ))}
       </div>
+
       <div className="conteudo-aba">
         {renderConteudoAba()}
       </div>
