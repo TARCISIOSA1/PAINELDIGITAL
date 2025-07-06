@@ -1,4 +1,3 @@
-// src/components/Votacao.jsx
 import React, { useEffect, useState, useRef } from "react";
 import {
   collection,
@@ -6,7 +5,6 @@ import {
   doc,
   updateDoc,
   setDoc,
-  onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
@@ -37,8 +35,9 @@ async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao,
       statusSessao: statusSessao || sessao.status || "-",
       ordemDoDia: materias || [],
       votacaoAtual: {
-        materias: materias?.filter(m => m.status === "em_votacao") || [],
+        materia: materias?.find(m => m.status === "em_votacao")?.titulo || "",
         tipo: sessao.tipoVotacao || "Simples",
+        autor: materias?.find(m => m.status === "em_votacao")?.autor || "-",
         status: votacaoAtualExtra.status || "preparando",
         habilitados: habilitados || [],
         votos: votacaoAtualExtra.votos || {},
@@ -131,18 +130,6 @@ export default function Votacao() {
       atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {});
     }
   }, [sessaoAtiva, materias, habilitados]);
-
-  // --- SINCRONIZAÇÃO DE HABILITADOS EM TEMPO REAL (OUVIR PAINEL ATIVO)
-  useEffect(() => {
-    const painelRef = doc(db, "painelAtivo", "ativo");
-    const unsub = onSnapshot(painelRef, (snap) => {
-      const data = snap.data();
-      if (data && data.votacaoAtual && data.votacaoAtual.habilitados) {
-        setHabilitados(data.votacaoAtual.habilitados);
-      }
-    });
-    return () => unsub();
-  }, []);
 
   // INICIALIZAÇÃO
   const carregarSessaoAtivaOuPrevista = async () => {
