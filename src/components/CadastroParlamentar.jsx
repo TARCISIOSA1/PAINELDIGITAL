@@ -275,14 +275,6 @@ export default function CadastroParlamentar() {
     <div className="cadastro-parlamentar">
       <h2>Cadastro de Parlamentar</h2>
 
-      {/* BOTÃO PARA MIGRAR/ATUALIZAR ID DOS PARLAMENTARES ANTIGOS (opcional) */}
-      <button
-        style={{ background: "#2962ff", color: "#fff", marginBottom: 8 }}
-        onClick={migrarParlamentaresParaIdUsuario}
-      >
-        Migrar Parlamentares para ID Igual ao do Usuário
-      </button>
-
       <div className="formulario">
         <label>Selecionar Usuário Cadastrado</label>
         <select value={usuarioSelecionado} onChange={(e) => preencherCamposDoUsuario(e.target.value)}>
