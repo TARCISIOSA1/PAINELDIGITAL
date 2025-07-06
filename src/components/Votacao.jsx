@@ -1,3 +1,4 @@
+// src/components/Votacao.jsx
 import React, { useEffect, useState, useRef } from "react";
 import {
   collection,
