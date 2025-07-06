@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   collection,
   getDocs,
+  getDoc,
   doc,
   updateDoc,
   setDoc,
@@ -141,47 +142,44 @@ export default function Votacao() {
     }
   }, [sessaoAtiva, materias, habilitados]);
 
-const carregarSessaoAtivaOuPrevista = async () => {
-  const snapshot = await getDocs(collection(db, "sessoes"));
-  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  let sessao = lista.find((s) => s.status === "Ativa");
-  if (!sessao) {
-    sessao = lista.find(
-      (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
-    );
-  }
-  if (sessao) {
-    setSessaoAtiva(sessao);
-    setMaterias(sessao.ordemDoDia || []);
-    setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-    setTipoVotacao(sessao.tipoVotacao || "Simples");
-    setModalidade(sessao.modalidade || "Unica");
-    setPresidente(sessao.presidente || "");
-    // NOVO: carregar habilitados do painelAtivo
-    try {
-      const painelAtivoSnap = await getDocs(collection(db, "painelAtivo"));
-      let habilitadosFirestore = [];
-      painelAtivoSnap.forEach(doc => {
-        const data = doc.data();
-        if (data?.votacaoAtual?.habilitados) {
-          habilitadosFirestore = data.votacaoAtual.habilitados;
-        }
-      });
-      setHabilitados(habilitadosFirestore || sessao.presentes?.map((p) => p.id) || []);
-    } catch (e) {
-      setHabilitados(sessao.presentes?.map((p) => p.id) || []);
+  // INICIALIZAÇÃO COM PERSISTÊNCIA DOS HABILITADOS!
+  const carregarSessaoAtivaOuPrevista = async () => {
+    const snapshot = await getDocs(collection(db, "sessoes"));
+    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let sessao = lista.find((s) => s.status === "Ativa");
+    if (!sessao) {
+      sessao = lista.find(
+        (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
+      );
     }
-  } else {
-    setSessaoAtiva(null);
-    setMaterias([]);
-    setMateriasSelecionadas([]);
-    setTipoVotacao("Simples");
-    setModalidade("Unica");
-    setStatusVotacao("Preparando");
-    setHabilitados([]);
-  }
-};
-
+    if (sessao) {
+      setSessaoAtiva(sessao);
+      setMaterias(sessao.ordemDoDia || []);
+      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+      setTipoVotacao(sessao.tipoVotacao || "Simples");
+      setModalidade(sessao.modalidade || "Unica");
+      setPresidente(sessao.presidente || "");
+      // PERSISTÊNCIA DOS HABILITADOS!
+      try {
+        const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
+        let habilitadosFirestore = [];
+        if (painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados) {
+          habilitadosFirestore = painelDoc.data().votacaoAtual.habilitados;
+        }
+        setHabilitados(habilitadosFirestore.length ? habilitadosFirestore : (sessao.presentes?.map((p) => p.id) || []));
+      } catch (e) {
+        setHabilitados(sessao.presentes?.map((p) => p.id) || []);
+      }
+    } else {
+      setSessaoAtiva(null);
+      setMaterias([]);
+      setMateriasSelecionadas([]);
+      setTipoVotacao("Simples");
+      setModalidade("Unica");
+      setStatusVotacao("Preparando");
+      setHabilitados([]);
+    }
+  };
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
@@ -224,6 +222,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
       }
     }
   };
+
   const iniciarSessao = async () => {
     if (!sessaoAtiva) return;
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
@@ -315,10 +314,9 @@ const carregarSessaoAtivaOuPrevista = async () => {
     if (!sessaoAtiva || materiasSelecionadas.length === 0) return;
 
     // Busca os votos registrados no painelAtivo
-    const painelRef = doc(db, "painelAtivo", "ativo");
-    const painelSnap = await painelRef.get ? await painelRef.get() : null;
+    const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
     let votos = {};
-    if (painelSnap && painelSnap.exists()) {
+    if (painelSnap.exists()) {
       votos = painelSnap.data().votacaoAtual?.votos || {};
     }
 
@@ -378,14 +376,11 @@ const carregarSessaoAtivaOuPrevista = async () => {
   };
 
   // ---------- REGISTRAR VOTO DE DESEMPATE (CHAMAR MANUALMENTE DEPOIS DO PRESIDENTE VOTAR) --------------
-  // Esse método seria chamado pelo painel de votação do presidente (não no painel de controle),
-  // aqui só ilustrativo caso queira integrar já.
   const finalizarDesempate = async (votoPresidente) => {
     // Buscar votos já lançados (Sim, Não, Abstenção)
-    const painelRef = doc(db, "painelAtivo", "ativo");
-    const painelSnap = await painelRef.get ? await painelRef.get() : null;
+    const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
     let votos = {};
-    if (painelSnap && painelSnap.exists()) {
+    if (painelSnap.exists()) {
       votos = painelSnap.data().votacaoAtual?.votos || {};
     }
     votos[presidente] = votoPresidente;
