@@ -27,65 +27,65 @@ const QUORUM_OPTIONS = [
 
 // ---------------------
 // Função de persistência completa
- async function atualizarPainelAtivo(
-   sessao,
-   materias,
-   habilitados,
-   statusSessao,
-   votacaoAtualExtra = {},
-   tribunaAtual = {}
- ) {
-   if (!sessao) return;
-   const painelRef = doc(db, "painelAtivo", "ativo");
-   await setDoc(
-     painelRef,
-     {
--      idSessao: sessao.id,
--      statusSessao: statusSessao || sessao.status,
--      titulo: sessao.titulo || "-",
--      data: sessao.data || "",
--      hora: sessao.hora || "",
--      presidente: sessao.presidente || "",
--      secretario: sessao.secretario || "",
-+      idSessao: sessao.id,
-+      statusSessao: statusSessao || sessao.status,
-+      titulo: sessao.titulo || "-",
-+      data: sessao.data || "",
-+      hora: sessao.hora || "",
-+      local: sessao.local || "",            // ← adiciona local
-+      tipo: sessao.tipo || "",              // ← adiciona tipo
-+      presidente: sessao.presidente || "",
-+      secretario: sessao.secretario || "",
-       ordemDoDia: materias || [],
-       presentes: sessao.presentes || [],
-       votacaoAtual: {
-+        idSessao: sessao.id,
-+        statusSessao: statusSessao || sessao.status || "preparando",
-         materia: materias?.find(m => m.status === "em_votacao")?.titulo || "",
-         idMateria: materias?.find(m => m.status === "em_votacao")?.id || "",
-         tipo: sessao.tipoVotacao || "Simples",
-         autor: materias?.find(m => m.status === "em_votacao")?.autor || "-",
-         status: votacaoAtualExtra.status || "preparando",
--        habilitados: votacaoAtualExtra.habilitados || habilitados || [],
-+        habilitados: votacaoAtualExtra.hasOwnProperty("habilitados")
-+          ? votacaoAtualExtra.habilitados
-+          : habilitados,
-         votos: votacaoAtualExtra.votos || {},
-         tempoVotacao: votacaoAtualExtra.tempoVotacao || 60,
-         ...votacaoAtualExtra
-       },
-       tribunaAtual: {
-         nome: tribunaAtual.nome || "",
-         partido: tribunaAtual.partido || "",
-         tempoRestante: tribunaAtual.tempoRestante || 0,
-         cronometroAtivo: tribunaAtual.cronometroAtivo || false,
-         textoBruto: tribunaAtual.textoBruto || "",
-         ...tribunaAtual
-       }
-     },
-     { merge: true }
-   );
- }
+async function atualizarPainelAtivo(
+  sessao,
+  materias,
+  habilitados,
+  statusSessao,
+  votacaoAtualExtra = {},
+  tribunaAtual = {}
+) {
+  if (!sessao) return;
+  const painelRef = doc(db, "painelAtivo", "ativo");
+
+  const materiaEmVotacao = materias?.find(m => m.status === "em_votacao") || {};
+
+  await setDoc(
+    painelRef,
+    {
+      idSessao: sessao.id || "",
+      statusSessao: statusSessao || sessao.status || "Preparando",
+      titulo: sessao.titulo || "-",
+      data: sessao.data || "",
+      hora: sessao.hora || "",
+      local: sessao.local || "",
+      tipo: sessao.tipo || "",
+      presidente: sessao.presidente || "",
+      secretario: sessao.secretario || "",
+      legislatura: sessao.legislatura || "-",
+      ordemDoDia: materias || [],
+      presentes: sessao.presentes || [],
+      votacaoAtual: {
+        idSessao: sessao.id || "",
+        statusSessao: statusSessao || sessao.status || "preparando",
+        materia: materiaEmVotacao.titulo || "",
+        idMateria: materiaEmVotacao.id || "",
+        tipo: sessao.tipoVotacao || "Simples",
+        autor: materiaEmVotacao.autor || "-",
+        status: votacaoAtualExtra.status || "preparando",
+        habilitados: votacaoAtualExtra.hasOwnProperty("habilitados")
+          ? votacaoAtualExtra.habilitados
+          : habilitados || [],
+        votos: votacaoAtualExtra.votos || {},
+        tempoVotacao: votacaoAtualExtra.tempoVotacao || 60,
+        modalidade: sessao.modalidade || "Unica",
+        ...votacaoAtualExtra
+      },
+      tribunaAtual: {
+        nome: tribunaAtual.nome || "",
+        partido: tribunaAtual.partido || "",
+        foto: tribunaAtual.foto || "",
+        tempoInicial: tribunaAtual.tempoInicial || 0,
+        tempoRestante: tribunaAtual.tempoRestante || 0,
+        cronometroAtivo: tribunaAtual.cronometroAtivo || false,
+        textoBruto: tribunaAtual.textoBruto || "",
+        externo: tribunaAtual.externo || false,
+        ...tribunaAtual
+      }
+    },
+    { merge: true }
+  );
+}
 
   // ------------------------ ESTADOS GERAIS ------------------------
   const [aba, setAba] = useState("Controle de Sessão");
