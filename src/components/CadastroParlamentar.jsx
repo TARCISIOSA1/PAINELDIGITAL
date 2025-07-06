@@ -3,10 +3,10 @@ import React, { useState, useEffect } from "react";
 import {
   collection,
   getDocs,
-  addDoc,
   deleteDoc,
   doc,
   updateDoc,
+  setDoc,
   writeBatch
 } from "firebase/firestore";
 import {
@@ -104,7 +104,7 @@ export default function CadastroParlamentar() {
     const urlFoto = await handleUploadFoto();
     const dados = { ...form, foto: urlFoto };
 
-    if (!dados.uid) {
+    if (!usuarioSelecionado || !dados.uid) {
       alert("Selecione um usuário para vincular o UID do parlamentar!");
       return;
     }
@@ -114,7 +114,8 @@ export default function CadastroParlamentar() {
       alert("Parlamentar atualizado!");
       setEditandoId(null);
     } else {
-      await addDoc(collection(db, "parlamentares"), dados);
+      // Salva o parlamentar com o MESMO ID do usuário!
+      await setDoc(doc(db, "parlamentares", usuarioSelecionado), dados);
       alert("Parlamentar salvo!");
     }
 
@@ -149,6 +150,7 @@ export default function CadastroParlamentar() {
   const editarParlamentar = (p) => {
     setForm({ ...p });
     setEditandoId(p.id);
+    setUsuarioSelecionado(p.id);
   };
 
   const carregarImagemBase64 = (url) => {
@@ -217,46 +219,42 @@ export default function CadastroParlamentar() {
     docPDF.save("parlamentares-filtrados.pdf");
   };
 
-  // ======= MIGRAÇÃO: ATUALIZAR UID DE PARLAMENTARES ANTIGOS ==========
-  // Puxa usuários, encontra correspondência pelo email ou nome, e salva o uid em parlamentares antigos.
-  const atualizarUidsParlamentares = async () => {
-    const snapUsuarios = await getDocs(collection(db, "usuarios"));
-    const usuariosData = snapUsuarios.docs.map(d => ({ ...d.data(), id: d.id }));
-
+  // ======= MIGRAÇÃO: ATUALIZAR ID DE PARLAMENTARES PARA SER IGUAL AO DO USUÁRIO ==========
+  // ATENÇÃO: Isso é para uso opcional, para arrumar parlamentares antigos.
+  // O botão chama essa função e move todos para ID igual ao do usuário.
+  const migrarParlamentaresParaIdUsuario = async () => {
     const snapParlamentares = await getDocs(collection(db, "parlamentares"));
+    const snapUsuarios = await getDocs(collection(db, "usuarios"));
+    const usuarios = snapUsuarios.docs.map(u => ({ id: u.id, ...u.data() }));
+
     const batch = writeBatch(db);
-    let atualizados = 0;
-
-    snapParlamentares.docs.forEach((docParlamentar) => {
-      const parlamentar = docParlamentar.data();
-
-      // Já tem uid? Pula
-      if (parlamentar.uid) return;
-
-      // Procura usuário pelo email (preferencial) ou nome
-      const usuario = usuariosData.find(
+    let migrados = 0;
+    for (let d of snapParlamentares.docs) {
+      const parlamentar = d.data();
+      // Tenta achar usuário correspondente por email OU por uid OU por nome
+      const usuario = usuarios.find(
         u =>
-          (parlamentar.email && u.email && parlamentar.email === u.email)
-          || (parlamentar.nome && u.nome && parlamentar.nome === u.nome)
+          (parlamentar.uid && (u.uid === parlamentar.uid || u.id === parlamentar.uid)) ||
+          (parlamentar.email && u.email === parlamentar.email) ||
+          (parlamentar.nome && u.nome === parlamentar.nome)
       );
-
-      if (usuario && usuario.uid) {
-        batch.update(doc(db, "parlamentares", docParlamentar.id), {
-          uid: usuario.uid
-        });
-        atualizados++;
+      if (usuario && d.id !== usuario.id) {
+        // Cria parlamentar com ID igual ao usuário
+        batch.set(doc(db, "parlamentares", usuario.id), { ...parlamentar, uid: usuario.uid });
+        // Apaga o antigo
+        batch.delete(doc(db, "parlamentares", d.id));
+        migrados++;
       }
-    });
-
-    if (atualizados > 0) {
+    }
+    if (migrados > 0) {
       await batch.commit();
-      alert(`UID atualizado em ${atualizados} parlamentares!`);
+      alert(`${migrados} parlamentares migrados para ID igual ao do usuário!`);
       carregarParlamentares();
     } else {
-      alert("Nenhum parlamentar sem UID ou nenhum usuário correspondente encontrado.");
+      alert("Nenhum parlamentar para migrar ou já está tudo certo.");
     }
   };
-  // ===============================================================
+  // ===============================================================================
 
   // PAGINAÇÃO
   const filtrados = parlamentares
@@ -277,12 +275,12 @@ export default function CadastroParlamentar() {
     <div className="cadastro-parlamentar">
       <h2>Cadastro de Parlamentar</h2>
 
-      {/* BOTÃO PARA MIGRAR/ATUALIZAR UID DE PARLAMENTARES ANTIGOS */}
+      {/* BOTÃO PARA MIGRAR/ATUALIZAR ID DOS PARLAMENTARES ANTIGOS (opcional) */}
       <button
         style={{ background: "#2962ff", color: "#fff", marginBottom: 8 }}
-        onClick={atualizarUidsParlamentares}
+        onClick={migrarParlamentaresParaIdUsuario}
       >
-        Atualizar UIDs dos Parlamentares Existentes
+        Migrar Parlamentares para ID Igual ao do Usuário
       </button>
 
       <div className="formulario">
