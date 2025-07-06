@@ -20,7 +20,7 @@ const QUORUM_OPTIONS = [
   { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
 ];
 
-// Utilitário para atualizar painelAtivo
+// UTILITÁRIO CENTRAL: Sincroniza painelAtivo com sessão ativa SEMPRE!
 async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao, votacaoAtualExtra = {}) {
   if (!sessao) return;
   const painelRef = doc(db, "painelAtivo", "ativo");
@@ -36,14 +36,13 @@ async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao,
       ordemDoDia: materias || [],
       votacaoAtual: {
         materia: materias?.find(m => m.status === "em_votacao")?.titulo || "",
+        idMateria: materias?.find(m => m.status === "em_votacao")?.id || "",
         tipo: sessao.tipoVotacao || "Simples",
         autor: materias?.find(m => m.status === "em_votacao")?.autor || "-",
         status: votacaoAtualExtra.status || "preparando",
-        habilitados: habilitados || [],
+        habilitados: votacaoAtualExtra.habilitados || habilitados || [],
         votos: votacaoAtualExtra.votos || {},
-        tempoRestante: votacaoAtualExtra.tempoRestante || null,
-        tempoTotal: votacaoAtualExtra.tempoTotal || null,
-        materiasEmLote: votacaoAtualExtra.materiasEmLote || [],
+        tempoVotacao: votacaoAtualExtra.tempoVotacao || 60, // tempo padrão 60s
         ...votacaoAtualExtra
       },
     },
@@ -53,6 +52,8 @@ async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao,
 
 export default function Votacao() {
   const [aba, setAba] = useState("Controle de Sessão");
+
+  // ESTADOS GERAIS
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
   const [materias, setMaterias] = useState([]);
   const [materiasSelecionadas, setMateriasSelecionadas] = useState([]);
@@ -64,12 +65,12 @@ export default function Votacao() {
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
 
-  // CONTROLE DE TEMPO DA VOTAÇÃO
-  const [tempoVotacao, setTempoVotacao] = useState(120); // tempo padrão: 2 min
-  const [cronometroVotacao, setCronometroVotacao] = useState(null);
-  const [tempoRestanteVotacao, setTempoRestanteVotacao] = useState(120);
+  // Desempate
+  const [emDesempate, setEmDesempate] = useState(false);
+  const [votoDesempate, setVotoDesempate] = useState(null);
+  const [presidente, setPresidente] = useState(null);
 
-  // TRIBUNA e IA (sem alteração)
+  // TRIBUNA
   const [tempoFala, setTempoFala] = useState(180);
   const [tempoRestante, setTempoRestante] = useState(180);
   const [cronometroAtivo, setCronometroAtivo] = useState(false);
@@ -80,21 +81,23 @@ export default function Votacao() {
   const [bancoUsarTempo, setBancoUsarTempo] = useState(0);
   const [tempoSalvo, setTempoSalvo] = useState(false);
 
+  // Legislatura / Sessão
   const [legislaturas, setLegislaturas] = useState([]);
   const [legislaturaSelecionada, setLegislaturaSelecionada] = useState(null);
   const [numeroSessaoOrdinaria, setNumeroSessaoOrdinaria] = useState(0);
   const [numeroSessaoLegislativa, setNumeroSessaoLegislativa] = useState(0);
 
+  // IA
   const [ataCorrigida, setAtaCorrigida] = useState("");
   const [carregandoAta, setCarregandoAta] = useState(false);
   const [perguntaIA, setPerguntaIA] = useState("");
   const [respostaIA, setRespostaIA] = useState("");
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
-  // Estado de votos já computados
-  const [votosComputados, setVotosComputados] = useState({});
+  // Tempo votação (pode ser customizado)
+  const [tempoVotacao, setTempoVotacao] = useState(60);
 
-  // --- INICIALIZAÇÃO ---
+  // Atualiza sempre painelAtivo ao abrir tela
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -131,16 +134,14 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
-  // --- Sincronizar sempre painelAtivo ---
+  // --- Sincronizar sempre painelAtivo quando sessão, matérias, habilitados ou status mudar
   useEffect(() => {
     if (sessaoAtiva) {
-      atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {
-        votos: votosComputados
-      });
+      atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {});
     }
-  }, [sessaoAtiva, materias, habilitados, votosComputados]);
+  }, [sessaoAtiva, materias, habilitados]);
 
-  // --- INICIALIZAÇÃO DAS FUNÇÕES ---
+  // INICIALIZAÇÃO
   const carregarSessaoAtivaOuPrevista = async () => {
     const snapshot = await getDocs(collection(db, "sessoes"));
     const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -156,6 +157,7 @@ export default function Votacao() {
       setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
+      setPresidente(sessao.presidente || "");
     } else {
       setSessaoAtiva(null);
       setMaterias([]);
@@ -180,7 +182,7 @@ export default function Votacao() {
     setBancoHoras(dados);
   };
 
-  // ---------------- CONTROLE DE SESSÃO (igual)
+  // ---------------- CONTROLE DE SESSÃO ----------------
   const alterarStatusSessao = async (novoStatus) => {
     if (!sessaoAtiva) return;
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
@@ -239,7 +241,6 @@ export default function Votacao() {
   };
 
   // ---------------- CONTROLE DE MATÉRIAS/VOTAÇÃO ----------------
-
   function moverMateria(idx, direcao) {
     setMaterias((prev) => {
       const nova = [...prev];
@@ -258,25 +259,23 @@ export default function Votacao() {
     });
   }
 
-  // INICIAR VOTAÇÃO COM CONTROLE DE TEMPO
+  // ---------- INICIAR VOTAÇÃO -------------
   const iniciarVotacao = async () => {
     if (!sessaoAtiva || materiasSelecionadas.length === 0) return;
     if (habilitados.length < quorumMinimo) {
       alert("Quórum mínimo não atingido!");
       return;
     }
-    // Define tempo de votação para os painéis
-    setTempoRestanteVotacao(tempoVotacao);
-
     let novaOrdem = (materias || []).map((m) =>
       materiasSelecionadas.includes(m.id) ? { ...m, status: "em_votacao" } : m
     );
     setMaterias(novaOrdem);
-
-    const painelMateriasLote = modalidade === "Lote"
-      ? novaOrdem.filter(m => materiasSelecionadas.includes(m.id))
-      : [];
-
+    const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
+    await updateDoc(sessaoRef, { ordemDoDia: novaOrdem });
+    for (let id of materiasSelecionadas) {
+      const materiaRef = doc(db, "materias", id);
+      await updateDoc(materiaRef, { status: "em_votacao" }).catch(() => { });
+    }
     await atualizarPainelAtivo(
       sessaoAtiva,
       novaOrdem,
@@ -284,71 +283,133 @@ export default function Votacao() {
       sessaoAtiva.status,
       {
         status: "em_votacao",
-        tempoRestante: tempoVotacao,
-        tempoTotal: tempoVotacao,
-        materiasEmLote: painelMateriasLote,
+        tempoVotacao,
+        habilitados,
+        votos: {},
+        presidente: presidente,
+        emDesempate: false
       }
     );
     setStatusVotacao("Em Andamento");
-
-    // Cronômetro regressivo para votação
-    if (cronometroVotacao) clearInterval(cronometroVotacao);
-    const timer = setInterval(async () => {
-      setTempoRestanteVotacao((prev) => {
-        if (prev > 1) {
-          atualizarPainelAtivo(sessaoAtiva, novaOrdem, habilitados, sessaoAtiva.status, {
-            status: "em_votacao",
-            tempoRestante: prev - 1,
-            tempoTotal: tempoVotacao,
-            materiasEmLote: painelMateriasLote,
-          });
-          return prev - 1;
-        } else {
-          clearInterval(timer);
-          finalizarVotacaoPorTempo(novaOrdem, painelMateriasLote);
-          return 0;
-        }
-      });
-    }, 1000);
-    setCronometroVotacao(timer);
+    setEmDesempate(false);
+    setVotoDesempate(null);
   };
 
-  // FINALIZAR POR TEMPO
-  const finalizarVotacaoPorTempo = async (novaOrdem, painelMateriasLote) => {
-    // Marcar abstenção para quem não votou
-    let votos = { ...votosComputados };
-    for (let v of habilitados) {
-      if (!votos[v]) {
-        votos[v] = "Abstenção";
-      }
+  // -------------- ENCERRAR VOTAÇÃO ------------------
+  const encerrarVotacao = async () => {
+    if (!sessaoAtiva || materiasSelecionadas.length === 0) return;
+
+    // Busca os votos registrados no painelAtivo
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    const painelSnap = await painelRef.get ? await painelRef.get() : null;
+    let votos = {};
+    if (painelSnap && painelSnap.exists()) {
+      votos = painelSnap.data().votacaoAtual?.votos || {};
     }
-    setVotosComputados(votos);
+
+    // Contagem dos votos atuais
+    let votosSim = 0, votosNao = 0, votosAbstencao = 0;
+    Object.values(votos).forEach(v => {
+      if (v === "Sim") votosSim++;
+      else if (v === "Não") votosNao++;
+      else votosAbstencao++;
+    });
+
+    // ---------- EMPATE? -----------
+    if (votosSim === votosNao && votosSim > 0) {
+      setEmDesempate(true);
+      setStatusVotacao("Desempate");
+      await atualizarPainelAtivo(
+        sessaoAtiva,
+        materias,
+        [presidente], // Apenas presidente habilitado
+        sessaoAtiva.status,
+        {
+          status: "desempate",
+          habilitados: [presidente],
+          votos,
+          mensagem: "Empate! Aguardando voto de desempate do presidente."
+        }
+      );
+      alert("Empate! Aguardando voto de desempate do presidente.");
+      return;
+    }
+
+    // ---------- SE NÃO EMPATE, encerra normalmente
+    let novaOrdem = (materias || []).map((m) =>
+      materiasSelecionadas.includes(m.id) ? { ...m, status: "votada" } : m
+    );
+    setMaterias(novaOrdem);
+    const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
+    await updateDoc(sessaoRef, { ordemDoDia: novaOrdem });
+    for (let id of materiasSelecionadas) {
+      const materiaRef = doc(db, "materias", id);
+      await updateDoc(materiaRef, { status: "votada" }).catch(() => { });
+    }
     await atualizarPainelAtivo(
       sessaoAtiva,
       novaOrdem,
       habilitados,
       sessaoAtiva.status,
-      {
-        status: "votada",
-        tempoRestante: 0,
-        tempoTotal: tempoVotacao,
-        votos,
-        materiasEmLote: painelMateriasLote,
-      }
+      { status: "votada", votos }
     );
     setStatusVotacao("Preparando");
     setMateriasSelecionadas((prev) => prev.filter((id) => {
       const mat = novaOrdem.find((m) => m.id === id);
       return mat && mat.status !== "votada";
     }));
-    if (cronometroVotacao) clearInterval(cronometroVotacao);
-    // Gera ata automática
-    await gerarAtaCorrigida();
+    setEmDesempate(false);
+    setVotoDesempate(null);
+  };
+
+  // ---------- REGISTRAR VOTO DE DESEMPATE (CHAMAR MANUALMENTE DEPOIS DO PRESIDENTE VOTAR) --------------
+  // Esse método seria chamado pelo painel de votação do presidente (não no painel de controle),
+  // aqui só ilustrativo caso queira integrar já.
+  const finalizarDesempate = async (votoPresidente) => {
+    // Buscar votos já lançados (Sim, Não, Abstenção)
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    const painelSnap = await painelRef.get ? await painelRef.get() : null;
+    let votos = {};
+    if (painelSnap && painelSnap.exists()) {
+      votos = painelSnap.data().votacaoAtual?.votos || {};
+    }
+    votos[presidente] = votoPresidente;
+
+    let votosSim = 0, votosNao = 0, votosAbstencao = 0;
+    Object.values(votos).forEach(v => {
+      if (v === "Sim") votosSim++;
+      else if (v === "Não") votosNao++;
+      else votosAbstencao++;
+    });
+
+    let novaOrdem = (materias || []).map((m) =>
+      materiasSelecionadas.includes(m.id) ? { ...m, status: "votada" } : m
+    );
+    setMaterias(novaOrdem);
+    const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
+    await updateDoc(sessaoRef, { ordemDoDia: novaOrdem });
+    for (let id of materiasSelecionadas) {
+      const materiaRef = doc(db, "materias", id);
+      await updateDoc(materiaRef, { status: "votada" }).catch(() => { });
+    }
+    await atualizarPainelAtivo(
+      sessaoAtiva,
+      novaOrdem,
+      habilitados,
+      sessaoAtiva.status,
+      { status: "votada", votos }
+    );
+    setStatusVotacao("Preparando");
+    setMateriasSelecionadas((prev) => prev.filter((id) => {
+      const mat = novaOrdem.find((m) => m.id === id);
+      return mat && mat.status !== "votada";
+    }));
+    setEmDesempate(false);
+    setVotoDesempate(votoPresidente);
   };
 
   const pausarVotacao = async () => {
     setStatusVotacao("Pausada");
-    if (cronometroVotacao) clearInterval(cronometroVotacao);
     await atualizarPainelAtivo(
       sessaoAtiva,
       materias,
@@ -360,26 +421,6 @@ export default function Votacao() {
 
   const retomarVotacao = async () => {
     setStatusVotacao("Em Andamento");
-    // Retomar cronômetro
-    if (tempoRestanteVotacao > 0) {
-      const timer = setInterval(async () => {
-        setTempoRestanteVotacao((prev) => {
-          if (prev > 1) {
-            atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {
-              status: "em_votacao",
-              tempoRestante: prev - 1,
-              tempoTotal: tempoVotacao,
-            });
-            return prev - 1;
-          } else {
-            clearInterval(timer);
-            finalizarVotacaoPorTempo(materias, []);
-            return 0;
-          }
-        });
-      }, 1000);
-      setCronometroVotacao(timer);
-    }
     await atualizarPainelAtivo(
       sessaoAtiva,
       materias,
@@ -387,44 +428,6 @@ export default function Votacao() {
       sessaoAtiva?.status,
       { status: "em_votacao" }
     );
-  };
-
-  const encerrarVotacao = async () => {
-    if (!sessaoAtiva || materiasSelecionadas.length === 0) return;
-    let novaOrdem = (materias || []).map((m) =>
-      materiasSelecionadas.includes(m.id) ? { ...m, status: "votada" } : m
-    );
-    setMaterias(novaOrdem);
-
-    // Marcar abstenção para quem não votou
-    let votos = { ...votosComputados };
-    for (let v of habilitados) {
-      if (!votos[v]) {
-        votos[v] = "Abstenção";
-      }
-    }
-    setVotosComputados(votos);
-
-    await atualizarPainelAtivo(
-      sessaoAtiva,
-      novaOrdem,
-      habilitados,
-      sessaoAtiva.status,
-      {
-        status: "votada",
-        tempoRestante: 0,
-        tempoTotal: tempoVotacao,
-        votos,
-      }
-    );
-    setStatusVotacao("Preparando");
-    setMateriasSelecionadas((prev) => prev.filter((id) => {
-      const mat = novaOrdem.find((m) => m.id === id);
-      return mat && mat.status !== "votada";
-    }));
-    if (cronometroVotacao) clearInterval(cronometroVotacao);
-    // Gera ata automática
-    await gerarAtaCorrigida();
   };
 
   const toggleMateria = (id) => {
@@ -444,18 +447,222 @@ export default function Votacao() {
     const novo = habilitados.includes(id)
       ? habilitados.filter((x) => x !== id)
       : [...habilitados, id];
-    setHabilitados(novo); // Para atualização instantânea do state
+    setHabilitados(novo);
     await atualizarPainelAtivo(sessaoAtiva, materias, novo, sessaoAtiva?.status);
   };
 
-  // --- IA e TRIBUNA IGUAL (código omitido para não duplicar resposta) ---
+  // ---------------- INTELIGÊNCIA ARTIFICIAL ----------------
+  async function gerarAtaCorrigida() {
+    setCarregandoAta(true);
+    setAtaCorrigida("Gerando ata automática...");
+    const sessaoId = sessaoAtiva?.id;
+    const data = sessaoAtiva?.data;
+    const res = await fetch("http://localhost:3334/api/atasFalas/gerarAtaCorrigida", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessaoId, data }),
+    });
+    const json = await res.json();
+    setAtaCorrigida(json.ataCorrigida || "Falha ao gerar ata.");
+    setCarregandoAta(false);
+  }
+  async function perguntarIA() {
+    setCarregandoPergunta(true);
+    setRespostaIA("Consultando IA...");
+    const res = await fetch("http://localhost:3334/api/pergunte", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pergunta: perguntaIA }),
+    });
+    const json = await res.json();
+    setRespostaIA(json.resposta || "Sem resposta da IA.");
+    setCarregandoPergunta(false);
+  }
+
+  // ------------------- TRIBUNA -------------------
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (cronometroAtivo && tempoRestante > 0) {
+      const painelRef = doc(db, "painelAtivo", "ativo");
+      updateDoc(painelRef, {
+        "tribunaAtual.cronometroAtivo": true,
+        "tribunaAtual.tempoRestante": tempoRestante,
+        "tribunaAtual.status": "Em andamento",
+      }).catch((err) => { });
+      intervalRef.current = setInterval(() => {
+        setTempoRestante((prevTempo) => {
+          const novoTempo = prevTempo > 0 ? prevTempo - 1 : 0;
+          updateDoc(painelRef, {
+            "tribunaAtual.tempoRestante": novoTempo,
+          }).catch((err) => { });
+          if (novoTempo === 0) {
+            clearInterval(intervalRef.current);
+            setCronometroAtivo(false);
+            updateDoc(painelRef, {
+              "tribunaAtual.cronometroAtivo": false,
+            }).catch((err) => { });
+          }
+          return novoTempo;
+        });
+      }, 1000);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [cronometroAtivo, tempoRestante]);
+
+  const iniciarOuRetomarTribuna = async () => {
+    if (!oradorSelecionado) {
+      alert("Selecione um orador antes de iniciar a tribuna.");
+      return;
+    }
+    let tempoParaUsar = tempoFala;
+    if (usarSaldo && oradorSelecionado !== "externo") {
+      const saldoTotal = bancoHoras[oradorSelecionado] || 0;
+      tempoParaUsar =
+        bancoUsarTempo > 0 && bancoUsarTempo <= saldoTotal
+          ? bancoUsarTempo
+          : saldoTotal > 0
+            ? saldoTotal
+            : tempoFala;
+      if (saldoTotal > 0) {
+        const novoSaldo = saldoTotal - tempoParaUsar;
+        await setDoc(
+          doc(db, "bancoHoras", oradorSelecionado),
+          { tempo: novoSaldo },
+          { merge: true }
+        );
+        setBancoHoras((prev) => ({ ...prev, [oradorSelecionado]: novoSaldo }));
+      }
+    }
+    setTempoRestante(tempoParaUsar);
+    setCronometroAtivo(true);
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    let dadosOrador;
+    if (oradorSelecionado === "externo") {
+      dadosOrador = { nome: "Orador Externo", partido: "Sem partido" };
+    } else {
+      const vereador = vereadores.find((p) => p.id === oradorSelecionado);
+      dadosOrador = { nome: vereador?.nome || "", partido: vereador?.partido || "" };
+    }
+    await setDoc(
+      painelRef,
+      {
+        tribunaAtual: {
+          ...dadosOrador,
+          tempoInicial: tempoParaUsar,
+          tempoRestante: tempoParaUsar,
+          saldoHoras: bancoHoras[oradorSelecionado] || 0,
+          cronometroAtivo: true,
+          status: "Em andamento",
+          legenda: [],
+        },
+      },
+      { merge: true }
+    );
+    setTempoSalvo(false);
+  };
+
+  const pausarTribuna = async () => {
+    setCronometroAtivo(false);
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    await updateDoc(painelRef, {
+      "tribunaAtual.cronometroAtivo": false,
+      "tribunaAtual.tempoRestante": tempoRestante,
+    }).catch(() => { });
+  };
+
+  const encerrarTempo = async () => {
+    if (tempoSalvo || !cronometroAtivo) return;
+    setCronometroAtivo(false);
+
+    if (oradorSelecionado && oradorSelecionado !== "externo" && !usarSaldo) {
+      const saldoAnterior = bancoHoras[oradorSelecionado] || 0;
+      const novoSaldo = saldoAnterior + tempoRestante;
+      await setDoc(
+        doc(db, "bancoHoras", oradorSelecionado),
+        { tempo: novoSaldo },
+        { merge: true }
+      );
+      setBancoHoras((prev) => ({ ...prev, [oradorSelecionado]: novoSaldo }));
+    }
+
+    setTempoRestante(0);
+    setTempoSalvo(true);
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    await updateDoc(painelRef, {
+      "tribunaAtual.tempoRestante": 0,
+      "tribunaAtual.cronometroAtivo": false,
+    }).catch(() => { });
+  };
+
+  const encerrarTribuna = async () => {
+    setCronometroAtivo(false);
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    await updateDoc(painelRef, {
+      tribunaAtual: {
+        nome: "",
+        partido: "",
+        tempoInicial: 0,
+        tempoRestante: 0,
+        cronometroAtivo: false,
+        status: "Tribuna Finalizada",
+        legenda: [],
+      },
+    }).catch(() => { });
+    setTempoRestante(tempoFala);
+    setTempoSalvo(false);
+  };
 
   // ------------------- RENDER DE ABAS -------------------
   function renderConteudoAba() {
     switch (aba) {
       case "Controle de Sessão":
-        // ... idêntico ao seu
-        break;
+        return (
+          <div className="bloco-dados-gerais">
+            <h3>Dados da Sessão</h3>
+            <b>Número da Sessão Plenária:</b> {numeroSessaoOrdinaria}ª<br />
+            <b>Número da Sessão Legislativa:</b> {numeroSessaoLegislativa}ª<br />
+            <b>Tipo:</b> {sessaoAtiva?.tipo || "-"} <br />
+            <b>Data:</b> {sessaoAtiva?.data || "-"}<br />
+            <b>Hora:</b> {sessaoAtiva?.hora || "-"}<br />
+            <b>Status:</b> {sessaoAtiva?.status || "-"}<br />
+            <b>Legislatura:</b> {legislaturaSelecionada?.descricao || "-"}
+            <hr />
+            <b>Mesa Diretora:</b>
+            <ul>
+              {sessaoAtiva?.mesa?.length > 0
+                ? sessaoAtiva.mesa.map((m, i) => (
+                  <li key={i}>
+                    {m.vereador} <span style={{ color: "#888" }}>({m.cargo})</span>
+                  </li>
+                ))
+                : <li>-</li>
+              }
+            </ul>
+            <hr />
+            <div style={{ margin: "16px 0" }}>
+              <h4>Botões de Controle da Sessão</h4>
+              {sessaoAtiva?.status !== "Ativa" && (
+                <button className="botao-verde" onClick={iniciarSessao}>
+                  ▶ Iniciar Sessão
+                </button>
+              )}
+              {sessaoAtiva?.status === "Ativa" && (
+                <button className="botao-vermelho" onClick={() => alterarStatusSessao("Encerrada")}>
+                  🛑 Encerrar Sessão
+                </button>
+              )}
+              <button className="botao-cinza" onClick={() => alterarStatusSessao("Suspensa")}>
+                ⏸ Suspender Sessão
+              </button>
+              <button className="botao-cinza" onClick={() => alterarStatusSessao("Pausada")}>
+                ⏸ Pausar Sessão
+              </button>
+              <button className="botao-verde" onClick={() => alterarStatusSessao("Ativa")}>
+                ▶ Retomar Sessão
+              </button>
+            </div>
+          </div>
+        );
       case "Controle de Votação":
         const quorumObj = QUORUM_OPTIONS.find(o => o.value === quorumTipo);
         return (
@@ -482,20 +689,6 @@ export default function Votacao() {
                   </select>
                 </label>
                 <label>
-                  <strong>Tempo de Votação (s):</strong>{" "}
-                  <input
-                    type="number"
-                    value={tempoVotacao}
-                    onChange={e => setTempoVotacao(Number(e.target.value))}
-                    style={{ width: "60px", marginLeft: 5 }}
-                    min={30}
-                    max={1800}
-                  />
-                  <span style={{ marginLeft: 8, color: "#1460a0", fontWeight: 600 }}>
-                    ⏳ Tempo: {tempoRestanteVotacao}s
-                  </span>
-                </label>
-                <label>
                   <strong>Quórum Legal:</strong>{" "}
                   <select value={quorumTipo} onChange={e => setQuorumTipo(e.target.value)} style={{ padding: "2px 8px" }}>
                     {QUORUM_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
@@ -503,6 +696,11 @@ export default function Votacao() {
                   <span style={{ marginLeft: 8, color: "#3a3", fontWeight: 600 }}>
                     ({quorumMinimo} vereadores) <span style={{ color: "#888", fontWeight: 400 }} title={quorumObj.regra}>• {quorumObj.regra}</span>
                   </span>
+                </label>
+                <label>
+                  <strong>Tempo de Votação (s):</strong>{" "}
+                  <input type="number" value={tempoVotacao} min={10} max={600}
+                    onChange={e => setTempoVotacao(Number(e.target.value))} style={{ width: 80, marginLeft: 5 }} />
                 </label>
               </div>
             </div>
@@ -520,6 +718,11 @@ export default function Votacao() {
               <button className="botao-verde" onClick={encerrarVotacao}>
                 ✅ Encerrar Votação
               </button>
+              {emDesempate && (
+                <div className="mensagem-desempate" style={{ margin: "18px 0", color: "red", fontWeight: "bold" }}>
+                  Empate! Aguardando voto do presidente para desempate.
+                </div>
+              )}
             </div>
             <hr />
             <div className="materias">
@@ -528,20 +731,8 @@ export default function Votacao() {
                 {materias.map((m, idx) => (
                   <li
                     key={m.id}
-                    className={
-                      materiasSelecionadas.includes(m.id) && m.status === "em_votacao"
-                        ? "materia-selecionada em-votacao"
-                        : materiasSelecionadas.includes(m.id)
-                          ? "materia-selecionada"
-                          : ""
-                    }
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      marginBottom: 6,
-                      background: m.status === "em_votacao" ? "#e3f2fd" : undefined,
-                      border: m.status === "em_votacao" ? "2px solid #1565c0" : undefined
-                    }}
+                    className={materiasSelecionadas.includes(m.id) ? "materia-selecionada" : ""}
+                    style={{ display: "flex", alignItems: "center", marginBottom: 6 }}
                   >
                     <input
                       type={modalidade === "Lote" ? "checkbox" : "radio"}
@@ -626,7 +817,151 @@ export default function Votacao() {
             </div>
           </div>
         );
-      // CONTROLE DE TRIBUNA E DEMAIS (mesmo do seu original)
+      case "Controle de Tribuna":
+        return (
+          <div className="tribuna">
+            <h4>🎤 Tribuna</h4>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Orador:
+              <select
+                value={oradorSelecionado}
+                onChange={(e) => { setOradorSelecionado(e.target.value); setBancoUsarTempo(0); }}
+                style={{ marginLeft: "5px" }}
+              >
+                <option value="">Selecione</option>
+                {vereadores
+                  .filter((p) => habilitados.includes(p.id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome} ({p.partido}) – Saldo: {bancoHoras[p.id] || 0}s
+                    </option>
+                  ))}
+                <option value="externo">Orador Externo</option>
+              </select>
+            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              <input
+                type="checkbox"
+                checked={usarSaldo}
+                onChange={(e) => setUsarSaldo(e.target.checked)}
+              />{" "}
+              Usar saldo de horas acumuladas
+            </label>
+            {usarSaldo && oradorSelecionado && oradorSelecionado !== "externo" && (
+              <label style={{ display: "block", marginBottom: "8px" }}>
+                Tempo do Banco a usar (s):{" "}
+                <input
+                  type="number"
+                  value={bancoUsarTempo}
+                  min="0"
+                  max={bancoHoras[oradorSelecionado] || 0}
+                  onChange={(e) => setBancoUsarTempo(Number(e.target.value))}
+                  style={{ width: "80px", marginLeft: "5px" }}
+                />
+              </label>
+            )}
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Tempo de Fala (s):{" "}
+              <input
+                type="number"
+                value={tempoFala}
+                onChange={(e) => setTempoFala(Number(e.target.value))}
+                style={{ width: "80px", marginLeft: "5px" }}
+              />
+            </label>
+            <p style={{ fontSize: "18px", margin: "10px 0" }}>
+              Tempo Restante: {Math.floor(tempoRestante / 60)}:
+              {("0" + (tempoRestante % 60)).slice(-2)}
+            </p>
+            {oradorSelecionado && oradorSelecionado !== "externo" && (
+              <p style={{ marginBottom: "10px" }}>
+                🕒 Saldo de Horas no Banco: {bancoHoras[oradorSelecionado] || 0}s
+              </p>
+            )}
+            <button className="botao-verde" onClick={() => cronometroAtivo ? pausarTribuna() : iniciarOuRetomarTribuna()}>
+              {cronometroAtivo ? "⏸ Pausar" : "▶ Iniciar"}
+            </button>
+            <button className="botao-azul" onClick={encerrarTempo} disabled={tempoSalvo || !cronometroAtivo} style={{
+              opacity: tempoSalvo || !cronometroAtivo ? 0.5 : 1,
+              cursor: tempoSalvo || !cronometroAtivo ? "not-allowed" : "pointer",
+            }}>
+              🔚 Encerrar Tempo
+            </button>
+            <button className="botao-vermelho" onClick={encerrarTribuna}>
+              🛑 Encerrar Tribuna
+            </button>
+          </div>
+        );
+      case "Controle de Presença":
+        return (
+          <div>
+            <h4>Registro de Presença dos Vereadores</h4>
+            <table className="presenca-table">
+              <thead>
+                <tr>
+                  <th>Vereador</th>
+                  <th>Presente?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vereadores.map((v) => (
+                  <tr key={v.id}>
+                    <td>{v.nome}</td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={habilitados.includes(v.id)}
+                        onChange={() => handleHabilitar(v.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      case "IA":
+        return (
+          <div className="painel-ia-institucional">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 26, color: "#1460a0" }}>🤖</span>
+              <h3 style={{ margin: 0 }}>Recursos de Inteligência Artificial</h3>
+            </div>
+            <div className="area-ia-flex">
+              <div style={{ flex: 1, marginRight: 18 }}>
+                <b>Gerar Ata Corrigida:</b><br />
+                <button className="botao-azul" onClick={gerarAtaCorrigida} disabled={carregandoAta}>
+                  {carregandoAta ? "Gerando..." : "Gerar Ata"}
+                </button>
+                {ataCorrigida && (
+                  <div className="ia-bloco-resposta">
+                    <pre style={{ whiteSpace: "pre-wrap" }}>{ataCorrigida}</pre>
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <b>Pergunte à IA:</b>
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <input
+                    type="text"
+                    value={perguntaIA}
+                    onChange={e => setPerguntaIA(e.target.value)}
+                    placeholder="Ex: Quem foi o último orador?"
+                    style={{ flex: 1 }}
+                  />
+                  <button onClick={perguntarIA} disabled={carregandoPergunta || !perguntaIA}>
+                    {carregandoPergunta ? "Aguarde..." : "Perguntar"}
+                  </button>
+                </div>
+                {respostaIA && (
+                  <div className="ia-bloco-resposta">
+                    {respostaIA}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
