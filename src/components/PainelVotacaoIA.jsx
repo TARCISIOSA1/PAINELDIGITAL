@@ -209,15 +209,16 @@ export default function PainelVotacaoIA() {
 
       const habilitados = data.votacaoAtual?.habilitados || [];
       let docs = [];
-      if (habilitados.length > 0) {
-        if (habilitados.length <= 10) {
-          const q = query(collection(db, 'vereadores'), where('__name__', 'in', habilitados));
-          docs = (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() }));
-        } else {
-          const all = (await getDocs(collection(db, 'vereadores'))).docs.map(d => ({ id: d.id, ...d.data() }));
-          docs = all.filter(v => habilitados.includes(v.id));
-        }
-      }
+     if (habilitados.length > 0) {
+  if (habilitados.length <= 10) {
+    const q = query(collection(db, 'parlamentares'), where('__name__', 'in', habilitados));
+    docs = (await getDocs(q)).docs.map(d => ({ id: d.id, ...d.data() }));
+  } else {
+    const all = (await getDocs(collection(db, 'parlamentares'))).docs.map(d => ({ id: d.id, ...d.data() }));
+    docs = all.filter(v => habilitados.includes(v.id));
+  }
+}
+
       setPresentes(docs);
 
       const votos = data.votacaoAtual?.votos;
