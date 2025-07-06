@@ -141,32 +141,47 @@ export default function Votacao() {
     }
   }, [sessaoAtiva, materias, habilitados]);
 
-  // INICIALIZAÇÃO
-  const carregarSessaoAtivaOuPrevista = async () => {
-    const snapshot = await getDocs(collection(db, "sessoes"));
-    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    let sessao = lista.find((s) => s.status === "Ativa");
-    if (!sessao) {
-      sessao = lista.find(
-        (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
-      );
+const carregarSessaoAtivaOuPrevista = async () => {
+  const snapshot = await getDocs(collection(db, "sessoes"));
+  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  let sessao = lista.find((s) => s.status === "Ativa");
+  if (!sessao) {
+    sessao = lista.find(
+      (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
+    );
+  }
+  if (sessao) {
+    setSessaoAtiva(sessao);
+    setMaterias(sessao.ordemDoDia || []);
+    setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+    setTipoVotacao(sessao.tipoVotacao || "Simples");
+    setModalidade(sessao.modalidade || "Unica");
+    setPresidente(sessao.presidente || "");
+    // NOVO: carregar habilitados do painelAtivo
+    try {
+      const painelAtivoSnap = await getDocs(collection(db, "painelAtivo"));
+      let habilitadosFirestore = [];
+      painelAtivoSnap.forEach(doc => {
+        const data = doc.data();
+        if (data?.votacaoAtual?.habilitados) {
+          habilitadosFirestore = data.votacaoAtual.habilitados;
+        }
+      });
+      setHabilitados(habilitadosFirestore || sessao.presentes?.map((p) => p.id) || []);
+    } catch (e) {
+      setHabilitados(sessao.presentes?.map((p) => p.id) || []);
     }
-    if (sessao) {
-      setSessaoAtiva(sessao);
-      setMaterias(sessao.ordemDoDia || []);
-      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      setTipoVotacao(sessao.tipoVotacao || "Simples");
-      setModalidade(sessao.modalidade || "Unica");
-      setPresidente(sessao.presidente || "");
-    } else {
-      setSessaoAtiva(null);
-      setMaterias([]);
-      setMateriasSelecionadas([]);
-      setTipoVotacao("Simples");
-      setModalidade("Unica");
-      setStatusVotacao("Preparando");
-    }
-  };
+  } else {
+    setSessaoAtiva(null);
+    setMaterias([]);
+    setMateriasSelecionadas([]);
+    setTipoVotacao("Simples");
+    setModalidade("Unica");
+    setStatusVotacao("Preparando");
+    setHabilitados([]);
+  }
+};
+
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
