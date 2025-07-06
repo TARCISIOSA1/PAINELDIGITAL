@@ -39,18 +39,26 @@ export default function Login() {
         return;
       }
 
-      // Salva usuário logado no localStorage exatamente igual ao banco/cadastro
+      // Salva usuário logado no localStorage (objeto)
       localStorage.setItem("usuarioLogado", JSON.stringify({
         id: snap.docs[0].id,
         nome: userData.nome,
-        tipoUsuario: userData.tipoUsuario, // <-- igual ao banco!
-        email: userData.email
+        tipoUsuario: userData.tipoUsuario,
+        email: userData.email,
       }));
+
+      // Salva individualmente os campos esperados pelas telas!
+      localStorage.setItem("id", snap.docs[0].id);
+      localStorage.setItem("nome", userData.nome || "");
+      localStorage.setItem("partido", userData.partido || "");
+      localStorage.setItem("foto", userData.foto || "");
+      localStorage.setItem("tipo", userData.tipoUsuario || "");
+      localStorage.setItem("email", userData.email || "");
 
       // Também salva tipoUsuario separado, igual ao banco
       localStorage.setItem("tipoUsuario", userData.tipoUsuario);
 
-      // Redireciona conforme o tipo de usuário (pode manter o padronizado para navegação)
+      // Redireciona conforme o tipo de usuário
       const tipoUsuarioPadronizado = (userData.tipoUsuario || "")
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
