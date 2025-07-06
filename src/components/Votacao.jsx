@@ -5,7 +5,6 @@ import {
   doc,
   updateDoc,
   setDoc,
-  getDoc,
   onSnapshot,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -13,6 +12,8 @@ import TopoInstitucional from "./TopoInstitucional";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 import "./Votacao.css";
 
+// ---------------------
+// REGRAS DE QUÓRUM
 const QUORUM_OPTIONS = [
   { label: "Quórum Simples", value: "simples", regra: "Maioria simples dos presentes (n/2 + 1)", formula: n => Math.ceil(n / 2) },
   { label: "Quórum de Suspensão", value: "suspensao", regra: "1/3 dos vereadores", formula: n => Math.ceil(n / 3) },
@@ -22,6 +23,8 @@ const QUORUM_OPTIONS = [
 
 export default function Votacao() {
   const [aba, setAba] = useState("Controle de Sessão");
+
+  // ESTADOS GERAIS
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
   const [materias, setMaterias] = useState([]);
   const [materiasSelecionadas, setMateriasSelecionadas] = useState([]);
@@ -32,6 +35,8 @@ export default function Votacao() {
   const [statusVotacao, setStatusVotacao] = useState("Preparando");
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
+
+  // TRIBUNA
   const [tempoFala, setTempoFala] = useState(180);
   const [tempoRestante, setTempoRestante] = useState(180);
   const [cronometroAtivo, setCronometroAtivo] = useState(false);
@@ -41,17 +46,21 @@ export default function Votacao() {
   const [usarSaldo, setUsarSaldo] = useState(false);
   const [bancoUsarTempo, setBancoUsarTempo] = useState(0);
   const [tempoSalvo, setTempoSalvo] = useState(false);
+
+  // Legislatura / Sessão
   const [legislaturas, setLegislaturas] = useState([]);
   const [legislaturaSelecionada, setLegislaturaSelecionada] = useState(null);
   const [numeroSessaoOrdinaria, setNumeroSessaoOrdinaria] = useState(0);
   const [numeroSessaoLegislativa, setNumeroSessaoLegislativa] = useState(0);
+
+  // IA
   const [ataCorrigida, setAtaCorrigida] = useState("");
   const [carregandoAta, setCarregandoAta] = useState(false);
   const [perguntaIA, setPerguntaIA] = useState("");
   const [respostaIA, setRespostaIA] = useState("");
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
-  // ON SNAPSHOT: sempre pega habilitados do banco em tempo real
+  // ------------------- SINCRONIZAÇÃO HABILITADOS EM TEMPO REAL -------------------
   useEffect(() => {
     const painelRef = doc(db, "painelAtivo", "ativo");
     const unsub = onSnapshot(painelRef, (snap) => {
@@ -63,6 +72,7 @@ export default function Votacao() {
     return () => unsub();
   }, []);
 
+  // ---------------- INICIALIZAÇÃO E FIREBASE ----------------
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -93,6 +103,7 @@ export default function Votacao() {
     carregarLegislaturaEContagem();
   }, []);
 
+  // Atualiza quorumMinimo ao mudar tipo ou vereadores
   useEffect(() => {
     const opt = QUORUM_OPTIONS.find(o => o.value === quorumTipo);
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
@@ -111,14 +122,12 @@ export default function Votacao() {
       setSessaoAtiva(sessao);
       setMaterias(sessao.ordemDoDia || []);
       setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      // NÃO setHabilitados aqui! Agora o estado é do onSnapshot.
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
     } else {
       setSessaoAtiva(null);
       setMaterias([]);
       setMateriasSelecionadas([]);
-      // NÃO setHabilitados aqui!
       setTipoVotacao("Simples");
       setModalidade("Unica");
       setStatusVotacao("Preparando");
@@ -151,7 +160,7 @@ export default function Votacao() {
     if (novoStatus === "Encerrada") {
       // Gera ata automaticamente
       await gerarAtaCorrigida();
-      // Limpa tudo ao encerrar
+      // Zera tudo ao encerrar
       setSessaoAtiva(null);
       setMaterias([]);
       setMateriasSelecionadas([]);
@@ -160,18 +169,12 @@ export default function Votacao() {
       setStatusVotacao("Preparando");
       setRespostaIA("");
       setAtaCorrigida("");
-      // Zera habilitados (zera Firestore também)
-      await updateDoc(doc(db, "painelAtivo", "ativo"), {
-        "votacaoAtual.habilitados": [],
-        votacaoAtual: {},
-      });
       // Zera banco de horas
       for (let id of Object.keys(bancoHoras)) {
         await setDoc(doc(db, "bancoHoras", id), { tempo: 0 }, { merge: true });
       }
     }
   };
-
   const iniciarSessao = async () => {
     if (!sessaoAtiva) return;
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
@@ -193,6 +196,7 @@ export default function Votacao() {
     }
   };
 
+  // ---------------- CONTROLE DE MATÉRIAS/VOTAÇÃO ----------------
   function moverMateria(idx, direcao) {
     setMaterias((prev) => {
       const nova = [...prev];
@@ -303,6 +307,17 @@ export default function Votacao() {
     }
   };
 
+  // --- CONTROLE DOS HABILITADOS ---
+  const handleHabilitar = async (id) => {
+    const novo = habilitados.includes(id)
+      ? habilitados.filter((x) => x !== id)
+      : [...habilitados, id];
+    await updateDoc(doc(db, "painelAtivo", "ativo"), {
+      "votacaoAtual.habilitados": novo,
+    });
+  };
+
+  // ---------------- INTELIGÊNCIA ARTIFICIAL ----------------
   async function gerarAtaCorrigida() {
     setCarregandoAta(true);
     setAtaCorrigida("Gerando ata automática...");
@@ -330,6 +345,7 @@ export default function Votacao() {
     setCarregandoPergunta(false);
   }
 
+  // ------------------- TRIBUNA -------------------
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (cronometroAtivo && tempoRestante > 0) {
@@ -462,22 +478,10 @@ export default function Votacao() {
     setTempoSalvo(false);
   };
 
-  // -------------- HABILITAR/DESHABILITAR VEREADOR (SALVA NO FIRESTORE) --------------
-  const handleHabilitar = async (id) => {
-    const novo = habilitados.includes(id)
-      ? habilitados.filter((x) => x !== id)
-      : [...habilitados, id];
-    // Salva direto no banco
-    await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      "votacaoAtual.habilitados": novo,
-    });
-    // O onSnapshot já atualiza o estado local em todas as telas
-  };
-
+  // ------------------- RENDER DE ABAS -------------------
   function renderConteudoAba() {
     switch (aba) {
       case "Controle de Sessão":
-        // ... (igual ao seu, mantido)
         return (
           <div className="bloco-dados-gerais">
             <h3>Dados da Sessão</h3>
@@ -529,7 +533,123 @@ export default function Votacao() {
         const quorumObj = QUORUM_OPTIONS.find(o => o.value === quorumTipo);
         return (
           <div>
-            {/* ...configurações de votação... */}
+            <div className="bloco-config-votacao" style={{ margin: "20px 0", padding: 12, background: "#f8fafc", borderRadius: 8 }}>
+              <h4>⚙️ Configuração da Votação</h4>
+              <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+                <label>
+                  <strong>Tipo de Votação:</strong>{" "}
+                  <select value={tipoVotacao} onChange={e => setTipoVotacao(e.target.value)} style={{ padding: "2px 8px" }}>
+                    <option>Simples</option>
+                    <option>Nominal</option>
+                    <option>Secreta</option>
+                    <option>Aclamação</option>
+                    <option>Destaque</option>
+                    <option>Escrutínio</option>
+                  </select>
+                </label>
+                <label>
+                  <strong>Modalidade:</strong>{" "}
+                  <select value={modalidade} onChange={e => setModalidade(e.target.value)} style={{ padding: "2px 8px" }}>
+                    <option>Unica</option>
+                    <option>Lote</option>
+                  </select>
+                </label>
+                <label>
+                  <strong>Quórum Legal:</strong>{" "}
+                  <select value={quorumTipo} onChange={e => setQuorumTipo(e.target.value)} style={{ padding: "2px 8px" }}>
+                    {QUORUM_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                  </select>
+                  <span style={{ marginLeft: 8, color: "#3a3", fontWeight: 600 }}>
+                    ({quorumMinimo} vereadores) <span style={{ color: "#888", fontWeight: 400 }} title={quorumObj.regra}>• {quorumObj.regra}</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+            <div className="controle-votacao">
+              <h4>🛠 Controle da Votação (Status: {statusVotacao})</h4>
+              <button className="botao-cinza" onClick={pausarVotacao}>
+                ⏸ Pausar Votação
+              </button>
+              <button className="botao-verde" onClick={retomarVotacao}>
+                ▶ Retomar Votação
+              </button>
+              <button className="botao-azul" onClick={iniciarVotacao}>
+                ▶ Iniciar Votação
+              </button>
+              <button className="botao-verde" onClick={encerrarVotacao}>
+                ✅ Encerrar Votação
+              </button>
+            </div>
+            <hr />
+            <div className="materias">
+              <h4>📄 Matérias da Ordem do Dia</h4>
+              <ul>
+                {materias.map((m, idx) => (
+                  <li
+                    key={m.id}
+                    className={materiasSelecionadas.includes(m.id) ? "materia-selecionada" : ""}
+                    style={{ display: "flex", alignItems: "center", marginBottom: 6 }}
+                  >
+                    <input
+                      type={modalidade === "Lote" ? "checkbox" : "radio"}
+                      name="materias"
+                      checked={materiasSelecionadas.includes(m.id)}
+                      onChange={() => {
+                        if (m.status !== "votada") toggleMateria(m.id);
+                      }}
+                      disabled={m.status === "votada" || sessaoAtiva?.status !== "Ativa"}
+                    />
+                    <span
+                      style={{
+                        color:
+                          m.status === "votada"
+                            ? "#aaa"
+                            : m.status === "em_votacao"
+                              ? "#2465d6"
+                              : "#202",
+                        fontWeight: m.status === "em_votacao" ? "bold" : "normal",
+                        marginLeft: 8,
+                        marginRight: 12,
+                        flex: 1,
+                      }}
+                    >
+                      {m.titulo} ({m.tipo}) - Status: {m.status}
+                    </span>
+                    <button
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: idx === 0 ? "not-allowed" : "pointer",
+                        opacity: idx === 0 ? 0.3 : 1,
+                        fontSize: 15,
+                      }}
+                      onClick={() => moverMateria(idx, -1)}
+                      disabled={idx === 0}
+                      title="Subir"
+                      type="button"
+                    >
+                      <FaArrowUp />
+                    </button>
+                    <button
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: idx === materias.length - 1 ? "not-allowed" : "pointer",
+                        opacity: idx === materias.length - 1 ? 0.3 : 1,
+                        fontSize: 15,
+                      }}
+                      onClick={() => moverMateria(idx, 1)}
+                      disabled={idx === materias.length - 1}
+                      title="Descer"
+                      type="button"
+                    >
+                      <FaArrowDown />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <hr />
             <div className="habilitacao">
               <h4>👥 Habilitação de Vereadores</h4>
               <ul>
@@ -553,12 +673,157 @@ export default function Votacao() {
             </div>
           </div>
         );
-      // ...demais cases iguais ao seu original...
+      case "Controle de Tribuna":
+        return (
+          <div className="tribuna">
+            <h4>🎤 Tribuna</h4>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Orador:
+              <select
+                value={oradorSelecionado}
+                onChange={(e) => { setOradorSelecionado(e.target.value); setBancoUsarTempo(0); }}
+                style={{ marginLeft: "5px" }}
+              >
+                <option value="">Selecione</option>
+                {vereadores
+                  .filter((p) => habilitados.includes(p.id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome} ({p.partido}) – Saldo: {bancoHoras[p.id] || 0}s
+                    </option>
+                  ))}
+                <option value="externo">Orador Externo</option>
+              </select>
+            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              <input
+                type="checkbox"
+                checked={usarSaldo}
+                onChange={(e) => setUsarSaldo(e.target.checked)}
+              />{" "}
+              Usar saldo de horas acumuladas
+            </label>
+            {usarSaldo && oradorSelecionado && oradorSelecionado !== "externo" && (
+              <label style={{ display: "block", marginBottom: "8px" }}>
+                Tempo do Banco a usar (s):{" "}
+                <input
+                  type="number"
+                  value={bancoUsarTempo}
+                  min="0"
+                  max={bancoHoras[oradorSelecionado] || 0}
+                  onChange={(e) => setBancoUsarTempo(Number(e.target.value))}
+                  style={{ width: "80px", marginLeft: "5px" }}
+                />
+              </label>
+            )}
+            <label style={{ display: "block", marginBottom: "8px" }}>
+              Tempo de Fala (s):{" "}
+              <input
+                type="number"
+                value={tempoFala}
+                onChange={(e) => setTempoFala(Number(e.target.value))}
+                style={{ width: "80px", marginLeft: "5px" }}
+              />
+            </label>
+            <p style={{ fontSize: "18px", margin: "10px 0" }}>
+              Tempo Restante: {Math.floor(tempoRestante / 60)}:
+              {("0" + (tempoRestante % 60)).slice(-2)}
+            </p>
+            {oradorSelecionado && oradorSelecionado !== "externo" && (
+              <p style={{ marginBottom: "10px" }}>
+                🕒 Saldo de Horas no Banco: {bancoHoras[oradorSelecionado] || 0}s
+              </p>
+            )}
+            <button className="botao-verde" onClick={() => cronometroAtivo ? pausarTribuna() : iniciarOuRetomarTribuna()}>
+              {cronometroAtivo ? "⏸ Pausar" : "▶ Iniciar"}
+            </button>
+            <button className="botao-azul" onClick={encerrarTempo} disabled={tempoSalvo || !cronometroAtivo} style={{
+              opacity: tempoSalvo || !cronometroAtivo ? 0.5 : 1,
+              cursor: tempoSalvo || !cronometroAtivo ? "not-allowed" : "pointer",
+            }}>
+              🔚 Encerrar Tempo
+            </button>
+            <button className="botao-vermelho" onClick={encerrarTribuna}>
+              🛑 Encerrar Tribuna
+            </button>
+          </div>
+        );
+      case "Controle de Presença":
+        return (
+          <div>
+            <h4>Registro de Presença dos Vereadores</h4>
+            <table className="presenca-table">
+              <thead>
+                <tr>
+                  <th>Vereador</th>
+                  <th>Presente?</th>
+                </tr>
+              </thead>
+              <tbody>
+                {vereadores.map((v) => (
+                  <tr key={v.id}>
+                    <td>{v.nome}</td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={habilitados.includes(v.id)}
+                        onChange={() => handleHabilitar(v.id)}
+                      />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+      case "IA":
+        return (
+          <div className="painel-ia-institucional">
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: 26, color: "#1460a0" }}>🤖</span>
+              <h3 style={{ margin: 0 }}>Recursos de Inteligência Artificial</h3>
+            </div>
+            <div className="area-ia-flex">
+              <div style={{ flex: 1, marginRight: 18 }}>
+                <b>Gerar Ata Corrigida:</b><br />
+                <button className="botao-azul" onClick={gerarAtaCorrigida} disabled={carregandoAta}>
+                  {carregandoAta ? "Gerando..." : "Gerar Ata"}
+                </button>
+                {ataCorrigida && (
+                  <div className="ia-bloco-resposta">
+                    <pre style={{ whiteSpace: "pre-wrap" }}>{ataCorrigida}</pre>
+                  </div>
+                )}
+              </div>
+              <div style={{ flex: 1 }}>
+                <b>Pergunte à IA:</b>
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <input
+                    type="text"
+                    value={perguntaIA}
+                    onChange={e => setPerguntaIA(e.target.value)}
+                    placeholder="Ex: Quem foi o último orador?"
+                    style={{ flex: 1 }}
+                  />
+                  <button onClick={perguntarIA} disabled={carregandoPergunta || !perguntaIA}>
+                    {carregandoPergunta ? "Aguarde..." : "Perguntar"}
+                  </button>
+                </div>
+                {respostaIA && (
+                  <div className="ia-bloco-resposta">
+                    {respostaIA}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
   }
 
+  // ------------------- RENDER PRINCIPAL -------------------
   return (
     <div className="votacao-container">
       <TopoInstitucional
