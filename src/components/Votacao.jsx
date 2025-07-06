@@ -21,6 +21,33 @@ const QUORUM_OPTIONS = [
   { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
 ];
 
+// UTILITÁRIO CENTRAL: Sincroniza painelAtivo com sessão ativa SEMPRE!
+async function atualizarPainelAtivo(sessao, materias, habilitados, statusSessao, votacaoAtualExtra = {}) {
+  if (!sessao) return;
+  const painelRef = doc(db, "painelAtivo", "ativo");
+  await setDoc(
+    painelRef,
+    {
+      titulo: sessao.titulo || "-",
+      data: sessao.data || "",
+      hora: sessao.hora || "",
+      presidente: sessao.presidente || "",
+      secretario: sessao.secretario || "",
+      statusSessao: statusSessao || sessao.status || "-",
+      ordemDoDia: materias || [],
+      votacaoAtual: {
+        materias: materias?.filter(m => m.status === "em_votacao") || [],
+        tipo: sessao.tipoVotacao || "Simples",
+        status: votacaoAtualExtra.status || "preparando",
+        habilitados: habilitados || [],
+        votos: votacaoAtualExtra.votos || {},
+        ...votacaoAtualExtra
+      },
+    },
+    { merge: true }
+  );
+}
+
 export default function Votacao() {
   const [aba, setAba] = useState("Controle de Sessão");
 
@@ -60,19 +87,7 @@ export default function Votacao() {
   const [respostaIA, setRespostaIA] = useState("");
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
-  // ------------------- SINCRONIZAÇÃO HABILITADOS EM TEMPO REAL -------------------
-  useEffect(() => {
-    const painelRef = doc(db, "painelAtivo", "ativo");
-    const unsub = onSnapshot(painelRef, (snap) => {
-      const data = snap.data();
-      if (data && data.votacaoAtual && data.votacaoAtual.habilitados) {
-        setHabilitados(data.votacaoAtual.habilitados);
-      }
-    });
-    return () => unsub();
-  }, []);
-
-  // ---------------- INICIALIZAÇÃO E FIREBASE ----------------
+  // Atualiza sempre painelAtivo ao abrir tela
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -109,6 +124,26 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
+  // --- Sincronizar sempre painelAtivo quando sessão, matérias, habilitados ou status mudar
+  useEffect(() => {
+    if (sessaoAtiva) {
+      atualizarPainelAtivo(sessaoAtiva, materias, habilitados, sessaoAtiva.status, {});
+    }
+  }, [sessaoAtiva, materias, habilitados]);
+
+  // --- SINCRONIZAÇÃO DE HABILITADOS EM TEMPO REAL (OUVIR PAINEL ATIVO)
+  useEffect(() => {
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    const unsub = onSnapshot(painelRef, (snap) => {
+      const data = snap.data();
+      if (data && data.votacaoAtual && data.votacaoAtual.habilitados) {
+        setHabilitados(data.votacaoAtual.habilitados);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  // INICIALIZAÇÃO
   const carregarSessaoAtivaOuPrevista = async () => {
     const snapshot = await getDocs(collection(db, "sessoes"));
     const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -154,13 +189,14 @@ export default function Votacao() {
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
     await updateDoc(sessaoRef, { status: novoStatus });
     setSessaoAtiva((prev) => ({ ...prev, status: novoStatus }));
-    await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      statusSessao: novoStatus,
-    });
+    await atualizarPainelAtivo(
+      { ...sessaoAtiva, status: novoStatus },
+      materias,
+      habilitados,
+      novoStatus
+    );
     if (novoStatus === "Encerrada") {
-      // Gera ata automaticamente
       await gerarAtaCorrigida();
-      // Zera tudo ao encerrar
       setSessaoAtiva(null);
       setMaterias([]);
       setMateriasSelecionadas([]);
@@ -169,7 +205,6 @@ export default function Votacao() {
       setStatusVotacao("Preparando");
       setRespostaIA("");
       setAtaCorrigida("");
-      // Zera banco de horas
       for (let id of Object.keys(bancoHoras)) {
         await setDoc(doc(db, "bancoHoras", id), { tempo: 0 }, { merge: true });
       }
@@ -186,11 +221,21 @@ export default function Votacao() {
       painelRef,
       {
         statusSessao: "Ativa",
+        data: sessaoAtiva.data || "",
+        hora: sessaoAtiva.hora || "",
         dataHoraInicio: agora.toISOString(),
+        titulo: sessaoAtiva.titulo || "",
+        presidente: sessaoAtiva.presidente || "",
+        secretario: sessaoAtiva.secretario || "",
       },
       { merge: true }
     );
-    // Zera banco de horas ao iniciar
+    await atualizarPainelAtivo(
+      { ...sessaoAtiva, status: "Ativa" },
+      materias,
+      habilitados,
+      "Ativa"
+    );
     for (let id of Object.keys(bancoHoras)) {
       await setDoc(doc(db, "bancoHoras", id), { tempo: 0 }, { merge: true });
     }
@@ -209,7 +254,7 @@ export default function Votacao() {
       if (sessaoAtiva) {
         const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
         updateDoc(sessaoRef, { ordemDoDia: nova });
-        updateDoc(doc(db, "painelAtivo", "ativo"), { ordemDoDia: nova });
+        atualizarPainelAtivo(sessaoAtiva, nova, habilitados, sessaoAtiva.status);
       }
       return nova;
     });
@@ -231,45 +276,36 @@ export default function Votacao() {
       const materiaRef = doc(db, "materias", id);
       await updateDoc(materiaRef, { status: "em_votacao" }).catch(() => { });
     }
-    const painelRef = doc(db, "painelAtivo", "ativo");
-    await setDoc(
-      painelRef,
-      {
-        ordemDoDia: novaOrdem,
-        votacaoAtual: {
-          materias: novaOrdem
-            .filter((m) => materiasSelecionadas.includes(m.id))
-            .map((m) => ({
-              id: m.id,
-              titulo: m.titulo || m.descricao || "Sem título",
-              tipo: m.tipo || "Não definido",
-              autor: m.autor || "-",
-              status: "em_votacao",
-            })),
-          tipo: tipoVotacao,
-          status: "em_votacao",
-          habilitados,
-          votos: {},
-        },
-        statusSessao: sessaoAtiva.status || "Ativa",
-      },
-      { merge: true }
+    await atualizarPainelAtivo(
+      sessaoAtiva,
+      novaOrdem,
+      habilitados,
+      sessaoAtiva.status,
+      { status: "em_votacao" }
     );
     setStatusVotacao("Em Andamento");
   };
 
   const pausarVotacao = async () => {
     setStatusVotacao("Pausada");
-    await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      "votacaoAtual.status": "pausada",
-    }).catch(() => { });
+    await atualizarPainelAtivo(
+      sessaoAtiva,
+      materias,
+      habilitados,
+      sessaoAtiva?.status,
+      { status: "pausada" }
+    );
   };
 
   const retomarVotacao = async () => {
     setStatusVotacao("Em Andamento");
-    await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      "votacaoAtual.status": "em_votacao",
-    }).catch(() => { });
+    await atualizarPainelAtivo(
+      sessaoAtiva,
+      materias,
+      habilitados,
+      sessaoAtiva?.status,
+      { status: "em_votacao" }
+    );
   };
 
   const encerrarVotacao = async () => {
@@ -284,10 +320,13 @@ export default function Votacao() {
       const materiaRef = doc(db, "materias", id);
       await updateDoc(materiaRef, { status: "votada" }).catch(() => { });
     }
-    await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      ordemDoDia: novaOrdem,
-      "votacaoAtual.status": "votada",
-    }).catch(() => { });
+    await atualizarPainelAtivo(
+      sessaoAtiva,
+      novaOrdem,
+      habilitados,
+      sessaoAtiva.status,
+      { status: "votada" }
+    );
     setStatusVotacao("Preparando");
     setMateriasSelecionadas((prev) => prev.filter((id) => {
       const mat = novaOrdem.find((m) => m.id === id);
@@ -312,9 +351,8 @@ export default function Votacao() {
     const novo = habilitados.includes(id)
       ? habilitados.filter((x) => x !== id)
       : [...habilitados, id];
-    await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      "votacaoAtual.habilitados": novo,
-    });
+    setHabilitados(novo); // Para atualização instantânea do state
+    await atualizarPainelAtivo(sessaoAtiva, materias, novo, sessaoAtiva?.status);
   };
 
   // ---------------- INTELIGÊNCIA ARTIFICIAL ----------------
