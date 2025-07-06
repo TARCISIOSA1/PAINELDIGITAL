@@ -140,47 +140,46 @@ export default function Votacao() {
   }, [sessaoAtiva, materias, habilitados]);
 
   // --- INICIALIZAÇÃO + CORREÇÃO: PERSISTE HABILITADOS APÓS F5
-  const carregarSessaoAtivaOuPrevista = async () => {
-    const snapshot = await getDocs(collection(db, "sessoes"));
-    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    let sessao = lista.find((s) => s.status === "Ativa");
-    if (!sessao) {
-      sessao = lista.find(
-        (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
+const carregarSessaoAtivaOuPrevista = async () => {
+  const snapshot = await getDocs(collection(db, "sessoes"));
+  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  let sessao = lista.find((s) => s.status === "Ativa");
+  if (!sessao) {
+    sessao = lista.find((s) =>
+      ["Prevista", "Suspensa", "Pausada"].includes(s.status)
+    );
+  }
+  setSessaoAtiva(sessao || null);
+  setMaterias(sessao?.ordemDoDia || []);
+  setMateriasSelecionadas(sessao?.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+  setTipoVotacao(sessao?.tipoVotacao || "Simples");
+  setModalidade(sessao?.modalidade || "Unica");
+  setPresidente(sessao?.presidente || "");
+
+  // ==== CORREÇÃO CRUCIAL ====
+  try {
+    const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
+    const habilitadosPainel = painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados;
+    if (habilitadosPainel && habilitadosPainel.length > 0) {
+      setHabilitados(habilitadosPainel);
+    } else if (sessao?.presentes?.length) {
+      setHabilitados(sessao.presentes.map((p) => p.id));
+      await atualizarPainelAtivo(
+        sessao,
+        sessao.ordemDoDia || [],
+        sessao.presentes.map((p) => p.id),
+        sessao.status,
+        { habilitados: sessao.presentes.map((p) => p.id) }
       );
-    }
-    if (sessao) {
-      setSessaoAtiva(sessao);
-      setMaterias(sessao.ordemDoDia || []);
-      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      setTipoVotacao(sessao.tipoVotacao || "Simples");
-      setModalidade(sessao.modalidade || "Unica");
-      setPresidente(sessao.presidente || "");
-      try {
-        const painelDoc = await getDoc(doc(db, "painelAtivo", "ativo"));
-        // Corrigido: SEMPRE usa habilitados do painelAtivo, se houver
-        if (painelDoc.exists() && painelDoc.data()?.votacaoAtual?.habilitados !== undefined) {
-          setHabilitados(painelDoc.data().votacaoAtual.habilitados);
-        } else if (sessao.presentes?.length) {
-          setHabilitados(sessao.presentes.map((p) => p.id));
-          await atualizarPainelAtivo(sessao, sessao.ordemDoDia || [], sessao.presentes.map((p) => p.id), sessao.status);
-        } else {
-          setHabilitados([]);
-        }
-      } catch (e) {
-        setHabilitados(sessao.presentes?.map((p) => p.id) || []);
-      }
     } else {
-      setSessaoAtiva(null);
-      setMaterias([]);
-      setMateriasSelecionadas([]);
-      setTipoVotacao("Simples");
-      setModalidade("Unica");
-      setStatusVotacao("Preparando");
       setHabilitados([]);
-      setAtaCorrigida("");
+      // **NÃO sobrescreva no Firestore se não precisa!**
     }
-  };
+  } catch (e) {
+    setHabilitados(sessao?.presentes?.map((p) => p.id) || []);
+  }
+};
+
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
