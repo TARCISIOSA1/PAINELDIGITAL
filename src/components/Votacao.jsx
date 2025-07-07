@@ -58,21 +58,22 @@ export default function Votacao() {
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
   // INCLUIR MESA DIRETORA NO PAINEL
-  function gerarDadosSessaoPainel() {
-    return {
-      data: sessaoAtiva?.data || "",
-      hora: sessaoAtiva?.hora || "",
-      local: sessaoAtiva?.local || "",
-      presidente: sessaoAtiva?.presidente || "",
-      secretario: sessaoAtiva?.secretario || "",
-      tipo: sessaoAtiva?.tipo || "",
-      titulo: sessaoAtiva?.titulo || "",
-      legislatura: legislaturaSelecionada?.descricao || "",
-      numeroSessaoPlenaria: numeroSessaoOrdinaria || "",
-      numeroSessaoLegislativa: numeroSessaoLegislativa || "",
-      mesa: Array.isArray(sessaoAtiva?.mesa) ? sessaoAtiva.mesa : [],
-    };
-  }
+function gerarDadosSessaoPainel(sessao = null) {
+  const s = sessao || sessaoAtiva;
+  return {
+    data: s?.data || "",
+    hora: s?.hora || "",
+    local: s?.local || "",
+    presidente: s?.presidente || "",
+    secretario: s?.secretario || "",
+    tipo: s?.tipo || "",
+    titulo: s?.titulo || "",
+    legislatura: legislaturaSelecionada?.descricao || "",
+    numeroSessaoPlenaria: numeroSessaoOrdinaria || "",
+    numeroSessaoLegislativa: numeroSessaoLegislativa || "",
+    mesa: Array.isArray(s?.mesa) ? s.mesa : [],
+  };
+}
 
   // ---------- INICIALIZAÇÃO/FIREBASE ----------
   useEffect(() => {
@@ -129,27 +130,26 @@ export default function Votacao() {
         (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
       );
     }
-    if (sessao) {
-      setSessaoAtiva(sessao);
-      setMaterias(sessao.ordemDoDia || []);
-      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      setTipoVotacao(sessao.tipoVotacao || "Simples");
-      setModalidade(sessao.modalidade || "Unica");
-      // AO CARREGAR, GARANTE SALVAR CAMPOS COMPLETOS NO PAINEL
-      await setDoc(doc(db, "painelAtivo", "ativo"), {
-        ...gerarDadosSessaoPainel(),
-        statusSessao: sessao.status || "Ativa",
-      }, { merge: true });
-    } else {
-      setSessaoAtiva(null);
-      setMaterias([]);
-      setMateriasSelecionadas([]);
-      setHabilitados([]);
-      setTipoVotacao("Simples");
-      setModalidade("Unica");
-      setStatusVotacao("Preparando");
-    }
-  };
+   if (sessao) {
+  setSessaoAtiva(sessao);
+  setMaterias(sessao.ordemDoDia || []);
+  setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+  setTipoVotacao(sessao.tipoVotacao || "Simples");
+  setModalidade(sessao.modalidade || "Unica");
+  // ATENÇÃO: Use O OBJETO `sessao` DIRETO, não o sessaoAtiva
+  await setDoc(doc(db, "painelAtivo", "ativo"), {
+    ...gerarDadosSessaoPainel(sessao),
+    statusSessao: sessao.status || "Ativa",
+  }, { merge: true });
+} else {
+  setSessaoAtiva(null);
+  setMaterias([]);
+  setMateriasSelecionadas([]);
+  setHabilitados([]);
+  setTipoVotacao("Simples");
+  setModalidade("Unica");
+  setStatusVotacao("Preparando");
+}
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
