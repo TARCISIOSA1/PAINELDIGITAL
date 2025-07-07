@@ -58,22 +58,26 @@ export default function Votacao() {
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
   // INCLUIR MESA DIRETORA NO PAINEL
-function gerarDadosSessaoPainel(sessao = null) {
-  const s = sessao || sessaoAtiva;
+function gerarDadosSessaoPainel() {
+  // Pega presidente/secretário da mesa (array), se houver
+  const presidenteMesa = sessaoAtiva?.mesa?.find(m => m.cargo.toLowerCase().includes("presidente"))?.vereador || sessaoAtiva?.presidente || "";
+  const secretarioMesa = sessaoAtiva?.mesa?.find(m => m.cargo.toLowerCase().includes("secretário"))?.vereador || sessaoAtiva?.secretario || "";
+
   return {
-    data: s?.data || "",
-    hora: s?.hora || "",
-    local: s?.local || "",
-    presidente: s?.presidente || "",
-    secretario: s?.secretario || "",
-    tipo: s?.tipo || "",
-    titulo: s?.titulo || "",
+    data: sessaoAtiva?.data || "",
+    hora: sessaoAtiva?.hora || "",
+    local: sessaoAtiva?.local || "",
+    presidente: presidenteMesa,
+    secretario: secretarioMesa,
+    tipo: sessaoAtiva?.tipo || "",
     legislatura: legislaturaSelecionada?.descricao || "",
     numeroSessaoPlenaria: numeroSessaoOrdinaria || "",
     numeroSessaoLegislativa: numeroSessaoLegislativa || "",
-    mesa: Array.isArray(s?.mesa) ? s.mesa : [],
+    mesa: sessaoAtiva?.mesa || [],
+    // NÃO MANDA MAIS O CAMPO TITULO!
   };
 }
+
 
   // ---------- INICIALIZAÇÃO/FIREBASE ----------
   useEffect(() => {
