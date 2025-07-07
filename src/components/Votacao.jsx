@@ -34,14 +34,13 @@ export default function Votacao() {
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
 
-  // TRIBUNA AVANÇADA
+  // --------- TRIBUNA INTEGRAÇÃO FIRESTORE ---------
   const [oradores, setOradores] = useState([]);
   const [tempoPadrao, setTempoPadrao] = useState(180);
   const [oradorAtivoIdx, setOradorAtivoIdx] = useState(-1);
   const [tempoRestante, setTempoRestante] = useState(0);
   const [cronometroAtivo, setCronometroAtivo] = useState(false);
   const intervalRef = useRef(null);
-  const [novoOrador, setNovoOrador] = useState("");
   const [resumoFala, setResumoFala] = useState("");
   const [bancoHoras, setBancoHoras] = useState({});
 
@@ -94,6 +93,7 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
+  // ------ PUXA OS ORADORES DA TRIBUNA DA SESSÃO ------
   const carregarSessaoAtivaOuPrevista = async () => {
     const snapshot = await getDocs(collection(db, "sessoes"));
     const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -107,9 +107,25 @@ export default function Votacao() {
       setSessaoAtiva(sessao);
       setMaterias(sessao.ordemDoDia || []);
       setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      setHabilitados(sessao.presentes?.map((p) => p.id) || []);
+      setHabilitados(
+        Array.isArray(sessao.presentes)
+          ? sessao.presentes.map((p) => (p.id ? p.id : p))
+          : []
+      );
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
+
+      // ----------- PUXA TRIBUNA DA SESSÃO! -----------
+      if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
+        setOradores(sessao.tribuna.map(o => ({
+          ...o,
+          saldo: 0,
+          fala: "",
+          horario: "",
+        })));
+      } else {
+        setOradores([]);
+      }
     } else {
       setSessaoAtiva(null);
       setMaterias([]);
@@ -118,6 +134,7 @@ export default function Votacao() {
       setTipoVotacao("Simples");
       setModalidade("Unica");
       setStatusVotacao("Preparando");
+      setOradores([]);
     }
   };
 
@@ -135,7 +152,7 @@ export default function Votacao() {
     setBancoHoras(dados);
   };
 
-  // --------- CONTROLE DE TRIBUNA AVANÇADA ---------
+  // --------- CONTROLE DE TRIBUNA (SOMENTE ALTERAR/CRONÔMETRO) ---------
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (cronometroAtivo && oradorAtivoIdx >= 0 && tempoRestante > 0) {
@@ -165,7 +182,7 @@ export default function Votacao() {
     if (oradorAtivoIdx < 0) return;
     setCronometroAtivo(false);
     const orador = oradores[oradorAtivoIdx];
-    if (!orador.externo) {
+    if (orador.id && !orador.externo) {
       const saldoAntigo = bancoHoras[orador.id] || 0;
       setBancoHoras(prev => ({
         ...prev,
@@ -188,37 +205,6 @@ export default function Votacao() {
       setCronometroAtivo(false);
     }
   }
-  function adicionarOrador() {
-    if (!novoOrador) return;
-    let orador = null;
-    if (novoOrador === "externo") {
-      orador = { id: "externo-" + Date.now(), nome: "Orador Externo", partido: "-", externo: true };
-    } else {
-      const vereador = vereadores.find(v => v.id === novoOrador);
-      if (!vereador) return;
-      orador = {
-        id: vereador.id,
-        nome: vereador.nome,
-        partido: vereador.partido,
-        externo: false
-      };
-    }
-    setOradores(prev => [
-      ...prev,
-      {
-        ...orador,
-        tempoFala: tempoPadrao,
-        saldo: 0,
-        fala: "",
-        horario: ""
-      }
-    ]);
-    setNovoOrador("");
-  }
-  function removerOrador(idx) {
-    setOradores(oradores.filter((_, i) => i !== idx));
-    if (oradorAtivoIdx === idx) setOradorAtivoIdx(-1);
-  }
   function alterarTempoFala(idx, valor) {
     const lista = [...oradores];
     lista[idx].tempoFala = parseInt(valor) || tempoPadrao;
@@ -239,7 +225,9 @@ export default function Votacao() {
     setOradores(oradores.map(o => ({ ...o, saldo: 0 })));
   }
 
-  // --------- CONTROLE DE SESSÃO ---------
+  // --------- CONTROLE DE SESSÃO/VOTAÇÃO ---------
+  // ...ABAIXO TUDO IGUAL AO SEU CÓDIGO ORIGINAL...
+
   const alterarStatusSessao = async (novoStatus) => {
     if (!sessaoAtiva) return;
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
@@ -284,7 +272,6 @@ export default function Votacao() {
     }
   };
 
-  // --------- CONTROLE DE MATÉRIAS/VOTAÇÃO ---------
   function moverMateria(idx, direcao) {
     setMaterias((prev) => {
       const nova = [...prev];
@@ -395,7 +382,7 @@ export default function Votacao() {
     }
   };
 
-  // IA
+  // ----------- IA -----------
   async function gerarAtaCorrigida() {
     setCarregandoAta(true);
     setAtaCorrigida("Gerando ata automática...");
@@ -423,7 +410,7 @@ export default function Votacao() {
     setCarregandoPergunta(false);
   }
 
-  // RENDER DE ABAS
+  // ----------- RENDER DE ABAS -----------
   function renderConteudoAba() {
     switch (aba) {
       case "Controle de Sessão":
@@ -626,25 +613,7 @@ export default function Votacao() {
       case "Controle de Tribuna":
         return (
           <div className="tribuna-bloco">
-            <h4>Tribuna — Controle de Oradores</h4>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <select value={novoOrador} onChange={e => setNovoOrador(e.target.value)} style={{ width: 240 }}>
-                <option value="">Adicionar orador...</option>
-                {vereadores.map(v => (
-                  <option key={v.id} value={v.id}>{v.nome} ({v.partido})</option>
-                ))}
-                <option value="externo">Orador Externo</option>
-              </select>
-              <button onClick={adicionarOrador}>+ Adicionar</button>
-              <span style={{ marginLeft: 14 }}>Tempo padrão:
-                <input
-                  type="number"
-                  value={tempoPadrao}
-                  onChange={e => setTempoPadrao(Number(e.target.value))}
-                  style={{ width: 60, marginLeft: 5 }}
-                /> s
-              </span>
-            </div>
+            <h4>Tribuna — Oradores da Sessão</h4>
             <table className="tribuna-table" style={{ width: "100%", marginBottom: 18 }}>
               <thead>
                 <tr>
@@ -679,7 +648,6 @@ export default function Votacao() {
                     <td>{o.saldo || 0}</td>
                     <td>
                       <button onClick={() => setOradorAtivoIdx(idx)}>▶ Iniciar</button>
-                      <button onClick={() => removerOrador(idx)} style={{ color: "#a00", marginLeft: 6 }}>Remover</button>
                     </td>
                   </tr>
                 ))}
@@ -797,7 +765,7 @@ export default function Votacao() {
     }
   }
 
-  // RENDER PRINCIPAL
+  // ----------- RENDER PRINCIPAL -----------
   return (
     <div className="votacao-container">
       <TopoInstitucional
