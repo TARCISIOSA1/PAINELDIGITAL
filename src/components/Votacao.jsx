@@ -125,34 +125,35 @@ function gerarDadosSessaoPainel() {
     } catch { setHabilitados([]); }
   }
 
-  const carregarSessaoAtivaOuPrevista = async () => {
-    const snapshot = await getDocs(collection(db, "sessoes"));
-    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    let sessao = lista.find((s) => s.status === "Ativa");
-    if (!sessao) {
-      sessao = lista.find(
-        (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
-      );
-    }
-   if (sessao) {
-  setSessaoAtiva(sessao);
-  setMaterias(sessao.ordemDoDia || []);
-  setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-  setTipoVotacao(sessao.tipoVotacao || "Simples");
-  setModalidade(sessao.modalidade || "Unica");
-  // ATENÇÃO: Use O OBJETO `sessao` DIRETO, não o sessaoAtiva
-  await setDoc(doc(db, "painelAtivo", "ativo"), {
-    ...gerarDadosSessaoPainel(sessao),
-    statusSessao: sessao.status || "Ativa",
-  }, { merge: true });
-} else {
-  setSessaoAtiva(null);
-  setMaterias([]);
-  setMateriasSelecionadas([]);
-  setHabilitados([]);
-  setTipoVotacao("Simples");
-  setModalidade("Unica");
-  setStatusVotacao("Preparando");
+ const carregarSessaoAtivaOuPrevista = async () => {
+  const snapshot = await getDocs(collection(db, "sessoes"));
+  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  let sessao = lista.find((s) => s.status === "Ativa");
+  if (!sessao) {
+    sessao = lista.find(
+      (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
+    );
+  }
+  if (sessao) {
+    setSessaoAtiva(sessao);
+    setMaterias(sessao.ordemDoDia || []);
+    setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+    setTipoVotacao(sessao.tipoVotacao || "Simples");
+    setModalidade(sessao.modalidade || "Unica");
+    // ATENÇÃO: Use O OBJETO `sessao` DIRETO, não o sessaoAtiva
+    await setDoc(doc(db, "painelAtivo", "ativo"), {
+      ...gerarDadosSessaoPainel(sessao),
+      statusSessao: sessao.status || "Ativa",
+    }, { merge: true });
+  } else {
+    setSessaoAtiva(null);
+    setMaterias([]);
+    setMateriasSelecionadas([]);
+    setHabilitados([]);
+    setTipoVotacao("Simples");
+    setModalidade("Unica");
+    setStatusVotacao("Preparando");
+  }
 }
 
   const carregarVereadores = async () => {
