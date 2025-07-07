@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import TopoInstitucional from "./TopoInstitucional";
 import panelConfig from "../config/panelConfig.json";
 import { doc, onSnapshot, getDocs, collection, query, where } from "firebase/firestore";
@@ -23,23 +23,31 @@ function LegendaWhisper({ ativo, tribunaAtual, dadosPainel, onLegenda }) {
   const streamRef = useRef(null);
   const ativoRef = useRef(ativo);
 
-  useEffect(() => { ativoRef.current = ativo; }, [ativo]);
+  useEffect(() => {
+    ativoRef.current = ativo;
+  }, [ativo]);
+
   useEffect(() => {
     let gravaLoop = false;
+
     async function startGravacao() {
       if (!ativoRef.current) return;
       try {
-        if (!streamRef.current || !streamRef.current.active ||
+        if (
+          !streamRef.current ||
+          !streamRef.current.active ||
           streamRef.current.getTracks().some(track => track.readyState === 'ended')
         ) {
           streamRef.current = await navigator.mediaDevices.getUserMedia({ audio: true });
         }
         gravaLoop = true;
+
         async function gravarBloco() {
           if (!gravaLoop || !ativoRef.current) return;
           let chunks = [];
           const recorder = new window.MediaRecorder(streamRef.current, { mimeType: "audio/webm" });
           mediaRecorderRef.current = recorder;
+
           recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
           recorder.onstop = async () => {
             if (!gravaLoop || !ativoRef.current) return;
@@ -53,6 +61,7 @@ function LegendaWhisper({ ativo, tribunaAtual, dadosPainel, onLegenda }) {
               const data = await res.json();
               const texto = data.text || "⚠️ Nada transcrito.";
               onLegenda(texto);
+
               if (texto && tribunaAtual?.nome && dadosPainel?.data && tribunaAtual?.partido) {
                 await fetch("http://localhost:3333/api/atasFalas", {
                   method: "POST", headers: { "Content-Type": "application/json" },
@@ -61,60 +70,51 @@ function LegendaWhisper({ ativo, tribunaAtual, dadosPainel, onLegenda }) {
                     orador: tribunaAtual.nome,
                     partido: tribunaAtual.partido,
                     data: dadosPainel.data,
-                    horario: new Date().toLocaleTimeString("pt-BR", { hour12: false }),
-                    sessaoId: dadosPainel?.sessaoId || "",
+                    hora: dadosPainel.hora,
                   }),
                 });
               }
-            } catch { onLegenda("❌ Erro ao transcrever."); }
+            } catch {
+              onLegenda("❌ Erro ao transcrever.");
+            }
             if (gravaLoop && ativoRef.current) setTimeout(gravarBloco, 100);
           };
+
           recorder.start();
           setTimeout(() => { if (recorder.state !== "inactive") recorder.stop(); }, 3500);
         }
+
         gravarBloco();
-      } catch { onLegenda("❌ Erro ao acessar microfone."); }
+      } catch {
+        onLegenda("❌ Erro ao acessar microfone.");
+      }
     }
+
     if (ativo) { startGravacao(); }
     else {
       gravaLoop = false;
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") { mediaRecorderRef.current.stop(); }
       if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
     }
+
     return () => {
       gravaLoop = false;
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") { mediaRecorderRef.current.stop(); }
       if (streamRef.current) { streamRef.current.getTracks().forEach((t) => t.stop()); streamRef.current = null; }
     };
   }, [ativo, onLegenda, tribunaAtual, dadosPainel]);
+
   return null;
 }
 
-// Banner de boas-vindas / encerramento / notícia institucional
+// Banner de boas-vindas/encerramento/notícia IA
 function BannerBoasVindas({ frase, noticia }) {
   return (
     <div className="banner-boasvindas">
-      <h1 className="banner-titulo">{frase}</h1>
-      {noticia && (
-        <div className="banner-noticia-ia">
-          <span role="img" aria-label="notícia">📰</span>
-          {typeof noticia === "object" && noticia.frase ? (
-            <>
-              {noticia.frase}
-              {noticia.link && (
-                <a
-                  href={noticia.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ marginLeft: 8, color: '#0051a8', textDecoration: 'underline', fontWeight: 500 }}
-                >
-                  [Leia na íntegra]
-                </a>
-              )}
-            </>
-          ) : (
-            noticia
-          )}
+      <h1>{frase || "Bem-vindos à sessão plenária!"}</h1>
+      {noticia && noticia.frase && (
+        <div className="banner-noticia">
+          <span>📰 {noticia.frase}</span>
         </div>
       )}
     </div>
@@ -126,36 +126,29 @@ export default function PainelVotacaoIA() {
   const containerRef = useRef(null);
   const [dadosPainel, setDadosPainel] = useState(null);
   const [presentes, setPresentes] = useState([]);
-  const [votosRegistrados, setVotosRegistrados] = useState([]);
+  const [votos, setVotos] = useState([]);
   const [timerRed, setTimerRed] = useState(false);
   const [fullTribuna, setFullTribuna] = useState(false);
   const [fullVotacao, setFullVotacao] = useState(false);
   const [legenda, setLegenda] = useState("");
+
+  // Estado IA - boas-vindas / sessão encerrada / notícia
   const [boasVindas, setBoasVindas] = useState("");
   const [msgEncerrada, setMsgEncerrada] = useState("");
   const [noticiaIA, setNoticiaIA] = useState("");
 
+  // Limpa legenda ao trocar de orador ou acabar tempo
   useEffect(() => {
     if (!dadosPainel?.tribunaAtual?.nome || dadosPainel.tribunaAtual.tempoRestante <= 0) setLegenda("");
   }, [dadosPainel?.tribunaAtual]);
 
-  // Fetch dados painel
+  // Fetch dados painel ativo (Firestore)
   useEffect(() => {
-    const ref = doc(db, 'painelAtivo', 'ativo');
-    const unsubscribe = onSnapshot(ref, async (snap) => {
-      if (!snap.exists()) {
-        setDadosPainel(null);
-        return;
-      }
-      const data = snap.data();
+    const unsubscribe = onSnapshot(doc(db, "painelAtivo", "ativo"), async (docSnap) => {
+      const data = docSnap.data();
       setDadosPainel(data);
 
-      setFullTribuna(!!(data.tribunaAtual?.cronometroAtivo && data.tribunaAtual.tempoRestante > 0));
-      setFullVotacao([
-        'em_votacao',
-        'votando'
-      ].includes((data.votacaoAtual?.status || '').toLowerCase()));
-
+      // Presentes
       const habilitados = data.votacaoAtual?.habilitados || [];
       let docs = [];
       if (habilitados.length > 0) {
@@ -169,18 +162,21 @@ export default function PainelVotacaoIA() {
       }
       setPresentes(docs);
 
+      // Votos
       const votos = data.votacaoAtual?.votos;
-      setVotosRegistrados(
-        votos && typeof votos === 'object'
+      setVotos(
+        votos
           ? Object.values(votos).map(item => ({ id: item.vereador_id, voto: item.voto || '' }))
           : []
       );
+
+      // Timer Red
       setTimerRed(!!(data.tribunaAtual?.tempoRestante <= 20 && data.tribunaAtual.tempoRestante > 0));
     });
     return () => unsubscribe();
   }, []);
 
-  // Mensagem de boas-vindas
+  // Mensagem de boas-vindas IA
   useEffect(() => {
     fetch("http://localhost:3334/api/boasvindas")
       .then((r) => r.json())
@@ -188,7 +184,7 @@ export default function PainelVotacaoIA() {
       .catch(() => setBoasVindas("Bem-vindos à sessão plenária!"));
   }, []);
 
-  // Mensagem sessão encerrada
+  // Se sessão for ENCERRADA, busca mensagem institucional e notícia IA
   useEffect(() => {
     let noticiaInterval = null;
     async function carregarNoticia() {
@@ -222,14 +218,16 @@ export default function PainelVotacaoIA() {
     tribunaAtual,
     statusSessao,
     tipo,
+    mesa,
+    resultadoFinal,
   } = dadosPainel || {};
 
-  // --------- BUSCA PRESIDENTE E SECRETARIO CORRETOS -----------
+  // --------- PRESIDENTE E SECRETÁRIO -----------
   // Presidente (só "Presidente", não "Vice")
   const nomePresidente =
     sessaoPresidente ||
-    (Array.isArray(dadosPainel?.mesa)
-      ? (dadosPainel.mesa.find(m =>
+    (Array.isArray(mesa)
+      ? (mesa.find(m =>
           m.cargo &&
           m.cargo.trim().toLowerCase() === "presidente"
         )?.vereador)
@@ -237,93 +235,78 @@ export default function PainelVotacaoIA() {
   // Secretário (só "Secretário", não 2º ou 3º)
   const nomeSecretario =
     sessaoSecretario ||
-    (Array.isArray(dadosPainel?.mesa)
-      ? (dadosPainel.mesa.find(m =>
+    (Array.isArray(mesa)
+      ? (mesa.find(m =>
           m.cargo &&
           (m.cargo.trim().toLowerCase() === "secretário" || m.cargo.trim().toLowerCase() === "secretario")
         )?.vereador)
       : null) || "—";
 
-  // Gráfico
+  // --------- DADOS DO GRÁFICO -----------
   const gerarDadosGrafico = () => {
-    const res = dadosPainel?.resultadoFinal;
+    const res = resultadoFinal;
     if (!res) return null;
     return {
-      labels: ['Sim', 'Não', 'Abstenção'],
-      datasets: [
-        {
-          label: 'Votos',
-          data: [res.sim || 0, res.nao || 0, res.abstencao || 0],
-        },
-      ],
+      labels: ["Sim", "Não", "Abstenção"],
+      datasets: [{
+        label: "Votos",
+        data: [res.sim || 0, res.nao || 0, res.abstencao || 0],
+        borderWidth: 1,
+      }]
     };
   };
   const dadosGrafico = gerarDadosGrafico();
 
-  // ----- FULLSCREENS -----
+  // FULLSCREEN Tribuna
   if (fullTribuna && tribunaAtual?.nome) {
     return (
       <div className="fullscreen-overlay" ref={containerRef}>
-        <LegendaWhisper ativo tribunaAtual={tribunaAtual} dadosPainel={dadosPainel} onLegenda={setLegenda} />
         <TopoInstitucional />
-        <div className="fullscreen-content">
-          <div className="full-tribuna-orador">
-            <img src={tribunaAtual.fotoURL || '/assets/default-parlamentar.png'} alt={tribunaAtual.nome} className="full-foto-orador" />
-            <span className="full-orador-info">
-              {tribunaAtual.nome} <span className="full-partido">{tribunaAtual.partido ? `(${tribunaAtual.partido})` : ''}</span>
-            </span>
-          </div>
-          <div className={`full-tribuna-tempo ${timerRed ? 'timer-alert' : ''}`}>{tribunaAtual.tempoRestante}s</div>
-          <div className="legenda-tribuna-centralizada">
-            {legenda ? <span className="legenda-linha-centralizada">{legenda}</span> : <span style={{ color: '#888' }}>Legenda não disponível</span>}
-          </div>
-        </div>
+        <section className="bloco-tribuna-central bloco-fullscreen">
+          <h2>Tribuna</h2>
+          <div className="tribuna-full-nome">{tribunaAtual.nome} {tribunaAtual.partido && <span className="tribuna-full-partido">({tribunaAtual.partido})</span>}</div>
+          <div className="tribuna-full-legenda">{legenda || "..."}</div>
+          <button className="btn-voltar" onClick={() => setFullTribuna(false)}>Voltar</button>
+        </section>
       </div>
     );
   }
 
+  // FULLSCREEN Votação
   if (fullVotacao && votacaoAtual) {
     return (
       <div className="fullscreen-overlay" ref={containerRef}>
         <TopoInstitucional />
-        <div className="fullscreen-content">
-          <div className="full-votacao-content">
-            <div className="full-votacao-titulo">{votacaoAtual.materia}</div>
-            <div className="full-votacao-status">{votacaoAtual.status || 'Em Votação'} • {votacaoAtual.tipo || ''}</div>
-            <div><strong>Autor:</strong> {votacaoAtual.autor || '—'}</div>
-            <div className="full-votacao-votos">
-              <span>✅ Sim: {votosRegistrados.filter(v => v.voto === 'Sim').length}</span>
-              <span>❌ Não: {votosRegistrados.filter(v => v.voto === 'Não').length}</span>
-              <span>⚪ Abst.: {votosRegistrados.filter(v => v.voto === 'Abstenção').length}</span>
+        <section className="bloco-votacao-central bloco-fullscreen">
+          <h2>Votação</h2>
+          {dadosGrafico ? (
+            <div className="grafico-votacao">
+              <Bar data={dadosGrafico} />
             </div>
-            {dadosGrafico && <Bar data={dadosGrafico} />}
-          </div>
-        </div>
+          ) : <p>Nenhuma matéria em votação.</p>}
+          <button className="btn-voltar" onClick={() => setFullVotacao(false)}>Voltar</button>
+        </section>
       </div>
     );
   }
 
+  // SEM sessão ativa OU ENCERRADA
   if (!dadosPainel || statusSessao === "Encerrada") {
     return (
       <div className="painel-ia-container painel-ia-encerrada" ref={containerRef}>
         <TopoInstitucional />
-        {statusSessao === "Encerrada" ? (
+        {msgEncerrada ? (
           <BannerBoasVindas frase={msgEncerrada} noticia={noticiaIA} />
         ) : (
           <BannerBoasVindas frase={boasVindas} noticia={null} />
         )}
+        {/* LOGO centralizada */}
         <div className="painel-institucional-animado" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <img
             src={panelConfig.logoPath || "/logo-camara.png"}
-            alt="Logo Câmara"
-            className="logo-institucional-animada"
-            style={{ margin: "16px auto 12px auto", display: "block", maxWidth: 300, width: "100%" }}
+            alt="Logomarca Câmara"
+            style={{ maxWidth: 200, opacity: 0.7, margin: "20px 0" }}
           />
-          <div className="painel-mensagem-extra" style={{ textAlign: "center" }}>
-            {statusSessao === "Encerrada"
-              ? "Aguarde novas sessões ou acompanhe as notícias."
-              : "Aguardando início da próxima sessão..."}
-          </div>
         </div>
       </div>
     );
@@ -333,7 +316,7 @@ export default function PainelVotacaoIA() {
   return (
     <div className="painel-ia-container" ref={containerRef}>
       <LegendaWhisper
-        ativo={!!(tribunaAtual?.tempoRestante > 0)}
+        ativo={!!(tribunaAtual && tribunaAtual.tempoRestante > 0 && tribunaAtual.nome)}
         tribunaAtual={tribunaAtual}
         dadosPainel={dadosPainel}
         onLegenda={setLegenda}
@@ -367,51 +350,43 @@ export default function PainelVotacaoIA() {
       <section className="bloco-tribuna-central">
         <h2>Tribuna</h2>
         {tribunaAtual?.nome ? (
-          <div className="conteudo-tribuna">
-            <div className="tribuna-topo">
-              <img src={tribunaAtual.fotoURL || '/assets/default-parlamentar.png'} alt={tribunaAtual.nome} className="foto-orador-destaque" />
-              <div className="info-orador">
-                <p><strong>Orador:</strong> {tribunaAtual.nome}</p>
-                <p><strong>Partido:</strong> {tribunaAtual.partido || '—'}</p>
-              </div>
-              <div className={`timer-tribuna ${timerRed ? 'timer-alert' : ''}`}><span>{tribunaAtual.tempoRestante || 0}s</span></div>
+          <div className={`tribuna-box${timerRed ? " tribuna-timer-red" : ""}`}>
+            <div className="tribuna-nome">
+              {tribunaAtual.nome} {tribunaAtual.partido && <span className="tribuna-partido">({tribunaAtual.partido})</span>}
             </div>
-            <div className="legenda-tribuna-centralizada">
-              {legenda ? <span className="legenda-linha-centralizada">{legenda}</span> : <span style={{ color: '#888' }}>Legenda não disponível</span>}
+            <div className="tribuna-legenda">{legenda || <span style={{ color: "#999" }}>Legenda será exibida aqui em tempo real...</span>}</div>
+            <div className="tribuna-cronometro">
+              <strong>Tempo restante:</strong> {tribunaAtual.tempoRestante > 0 ? tribunaAtual.tempoRestante + "s" : "Encerrado"}
+              {tribunaAtual.tempoRestante > 0 && <button className="btn-full" onClick={() => setFullTribuna(true)}>Tela cheia</button>}
             </div>
           </div>
-        ) : <p>Sem orador na tribuna.</p>}
+        ) : <p>Nenhum orador na tribuna.</p>}
       </section>
 
       <section className="bloco-votacao-central">
-        <h2>Ordem do Dia</h2>
-        {votacaoAtual?.materia ? (
-          <div className="conteudo-votacao-central">
-            <div className="votacao-detalhes">
-              <p><strong>Matéria:</strong> {votacaoAtual.materia}</p>
-              <p><strong>Tipo:</strong> {votacaoAtual.tipo || '—'}</p>
-              <p><strong>Status:</strong> <span className={`status-small status-${(votacaoAtual.status || '').replace(/ /g, '-').toLowerCase()}`}>{votacaoAtual.status || '—'}</span></p>
-              <p><strong>Autor:</strong> {votacaoAtual.autor || '—'}</p>
+        <h2>Votação</h2>
+        {votacaoAtual ? (
+          <div className="votacao-box">
+            <div><strong>Matéria:</strong> {votacaoAtual?.materia || "—"} <span style={{ fontStyle: "italic", color: "#666" }}>{votacaoAtual?.autor && `- Autor: ${votacaoAtual.autor}`}</span></div>
+            <div><strong>Status:</strong> <span className={`status-small status-${(votacaoAtual?.status || "").toLowerCase()}`}>{votacaoAtual?.status || "—"}</span></div>
+            <div className="votacao-presentes">
+              {presentes.map((p) => (
+                <span className="tag-present tag-present-voto" key={p.id}>
+                  {p.foto ? <img src={p.foto} alt={p.nome} className="tag-foto" /> : <div className="tag-foto-placeholder" />}
+                  <span className="tag-nome">{p.nome}</span>
+                  {p.partido && <span className="tag-partido">{p.partido.toUpperCase()}</span>}
+                  <span className="tag-voto">
+                    {votos.find(v => v.id === p.id)?.voto
+                      ? (votos.find(v => v.id === p.id).voto === "sim" ? "✅ Sim" : votos.find(v => v.id === p.id).voto === "nao" ? "❌ Não" : "⚪ Abstenção")
+                      : "—"}
+                  </span>
+                </span>
+              ))}
             </div>
-            {votosRegistrados.length > 0 ? (
-              <table className="tabela-votos-central"><thead><tr><th>Vereador</th><th>Voto</th></tr></thead><tbody>
-                {votosRegistrados.map(item => {
-                  const dv = presentes.find(p => p.id === item.id) || {};
-                  return (
-                    <tr key={item.id}><td>{dv.nome || '—'} <span className="sigla-partido">({dv.partido || '—'})</span></td><td>{item.voto === 'Sim' ? '✅ Sim' : item.voto === 'Não' ? '❌ Não' : item.voto || 'Ainda não votou'}</td></tr>
-                  );
-                })}
-              </tbody></table>
-            ) : <p>Nenhum voto registrado.</p>}
-
-            <div className="resultado-final">
-              <p><strong>Resultado Final:</strong> {`✅ Sim: ${votosRegistrados.filter(v => v.voto === 'Sim').length}  |  ❌ Não: ${votosRegistrados.filter(v => v.voto === 'Não').length}  |  ⚪ Abstenções: ${votosRegistrados.filter(v => v.voto === 'Abstenção').length}`}</p>
-            </div>
-
             {dadosGrafico && (
-              <div className="painel-grafico">
-                <h3>📊 Gráfico de Votação</h3>
+              <div className="grafico-votacao">
                 <Bar data={dadosGrafico} />
+                <button className="btn-full" onClick={() => setFullVotacao(true)}>Tela cheia</button>
               </div>
             )}
           </div>
