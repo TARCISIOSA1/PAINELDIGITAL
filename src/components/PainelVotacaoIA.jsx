@@ -388,27 +388,32 @@ useEffect(() => {
       <TopoInstitucional />
 
       <section className="sessao-info-presentes">
-        <div className="info-gerais">
-          <h2>Informações da Sessão</h2>
-          <p><strong>Data:</strong> {sessaoData || '-'} | <strong>Hora:</strong> {sessaoHora || '-'}</p>
-          <p><strong>Local:</strong> {sessaoLocal || '—'}</p>
-          <p><strong>Presidente:</strong> {sessaoPresidente || '—'} | <strong>Secretário:</strong> {sessaoSecretario || '—'}</p>
-          <p><strong>Status:</strong> <span className={`status-small status-${(statusSessao || '').toLowerCase()}`}>{statusSessao || '—'}</span> | <strong>Tipo:</strong> {tipo || '—'}</p>
-          <p><strong>Título:</strong> {titulo || '—'}</p>
+  <div className="info-gerais">
+    <h2>Informações da Sessão</h2>
+    <p><strong>Data:</strong> {sessaoData || '-'} | <strong>Hora:</strong> {sessaoHora || '-'}</p>
+    <p><strong>Local:</strong> {sessaoLocal || '—'}</p>
+    <p>
+      <strong>Presidente:</strong> {sessaoPresidente || (dadosPainel?.mesa?.find(m => m.cargo.toLowerCase().includes("presidente"))?.vereador || '—')}
+      {" | "}
+      <strong>Secretário:</strong> {sessaoSecretario || (dadosPainel?.mesa?.find(m => m.cargo.toLowerCase().includes("secretário"))?.vereador || '—')}
+    </p>
+    <p><strong>Status:</strong> <span className={`status-small status-${(statusSessao || '').toLowerCase()}`}>{statusSessao || '—'}</span> | <strong>Tipo:</strong> {tipo || '—'}</p>
+    {/* Título removido, pois não existe mais */}
+  </div>
+  <div className="presentes-box">
+    <h2>Parlamentares Presentes</h2>
+    <div className="tags-presentes">
+      {presentes.length > 0 ? presentes.map(p => (
+        <div key={p.id} className="tag-present">
+          {p.foto ? <img src={p.foto} alt={p.nome} className="tag-foto" /> : <div className="tag-foto-placeholder" />}
+          <span className="tag-nome">{p.nome}</span>
+          {p.partido && <span className="tag-partido">{p.partido.toUpperCase()}</span>}
         </div>
-        <div className="presentes-box">
-          <h2>Parlamentares Presentes</h2>
-          <div className="tags-presentes">
-            {presentes.length > 0 ? presentes.map(p => (
-              <div key={p.id} className="tag-present">
-                {p.foto ? <img src={p.foto} alt={p.nome} className="tag-foto" /> : <div className="tag-foto-placeholder" />}
-                <span className="tag-nome">{p.nome}</span>
-                {p.partido && <span className="tag-partido">{p.partido.toUpperCase()}</span>}
-              </div>
-            )) : <p>Nenhum parlamentar habilitado</p>}
-          </div>
-        </div>
-      </section>
+      )) : <p>Nenhum parlamentar habilitado</p>}
+    </div>
+  </div>
+</section>
+
 
       <section className="bloco-tribuna-central">
         <h2>Tribuna</h2>
