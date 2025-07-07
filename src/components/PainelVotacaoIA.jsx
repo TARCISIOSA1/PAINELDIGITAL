@@ -392,23 +392,28 @@ useEffect(() => {
     <h2>Informações da Sessão</h2>
     <p><strong>Data:</strong> {sessaoData || '-'} | <strong>Hora:</strong> {sessaoHora || '-'}</p>
     <p><strong>Local:</strong> {sessaoLocal || '—'}</p>
-   <p>
-  <strong>Presidente:</strong> {
-    sessaoPresidente 
-    || (Array.isArray(dadosPainel?.mesa) 
-          ? dadosPainel.mesa.find(m => m.cargo.toLowerCase() === "presidente")?.vereador 
-          : '—')
-    || '—'
-  }
+  <p>
+  <strong>Presidente:</strong>{" "}
+  {sessaoPresidente ||
+    (Array.isArray(dadosPainel?.mesa)
+      ? dadosPainel.mesa.find(m =>
+          m.cargo &&
+          m.cargo.toLowerCase().replace(/[^a-z]/gi, '').includes("presidente") &&
+          !m.cargo.toLowerCase().includes("vice")
+        )?.vereador
+      : "—") || "—"}
   {" | "}
-  <strong>Secretário:</strong> {
-    sessaoSecretario 
-    || (Array.isArray(dadosPainel?.mesa) 
-          ? dadosPainel.mesa.find(m => m.cargo.toLowerCase() === "secretário")?.vereador 
-          : '—')
-    || '—'
-  }
+  <strong>Secretário:</strong>{" "}
+  {sessaoSecretario ||
+    (Array.isArray(dadosPainel?.mesa)
+      ? dadosPainel.mesa.find(m =>
+          m.cargo &&
+          m.cargo.toLowerCase().replace(/[^a-z]/gi, '').includes("secretario") &&
+          !m.cargo.toLowerCase().includes("2º")
+        )?.vereador
+      : "—") || "—"}
 </p>
+
 
     <p><strong>Status:</strong> <span className={`status-small status-${(statusSessao || '').toLowerCase()}`}>{statusSessao || '—'}</span> | <strong>Tipo:</strong> {tipo || '—'}</p>
     {/* Título removido, pois não existe mais */}
