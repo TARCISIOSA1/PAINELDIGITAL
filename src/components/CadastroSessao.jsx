@@ -352,7 +352,7 @@ ${materiasTexto || "Nenhuma matéria adicionada."}
       case "Tribuna":
         return (
           <div>
-            <h4>Cadastro dos Oradores da Tribuna</h4>
+            <h4>Oradores da Tribuna</h4>
             <div style={{ marginBottom: 10 }}>
               <label>Adicionar orador:</label>
               <select onChange={e => adicionarOrador(e.target.value)} value="">
@@ -408,6 +408,17 @@ ${materiasTexto || "Nenhuma matéria adicionada."}
                 </tbody>
               </table>
             }
+            <hr />
+            <div><b>Tribuna — falas dos vereadores:</b></div>
+            <ul>
+              {tribuna && tribuna.length > 0 ? (
+                tribuna.map((f, idx) => (
+                  <li key={idx}>{f.vereador || f.nome}: {f.fala || ""} <span style={{ color: "#888" }}>{f.horario || ""}</span></li>
+                ))
+              ) : (
+                <li>Nenhum orador registrado.</li>
+              )}
+            </ul>
           </div>
         );
       // ...restante das abas não muda...
