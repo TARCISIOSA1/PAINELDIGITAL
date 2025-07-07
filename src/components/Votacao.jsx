@@ -5,11 +5,13 @@ import {
   doc,
   updateDoc,
   setDoc,
+  addDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 import "./Votacao.css";
+import panelConfig from "../config/panelConfig.json";
 
 // ---------------------
 // REGRAS DE QUÓRUM
@@ -114,13 +116,12 @@ export default function Votacao() {
       );
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
-
       // ----------- PUXA TRIBUNA DA SESSÃO! -----------
       if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
         setOradores(sessao.tribuna.map(o => ({
           ...o,
           saldo: 0,
-          fala: "",
+          fala: o.fala || "",
           horario: "",
         })));
       } else {
@@ -170,15 +171,7 @@ export default function Votacao() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [cronometroAtivo, oradorAtivoIdx, tempoRestante]);
 
-  function iniciarFala() {
-    if (oradorAtivoIdx < 0) return;
-    setTempoRestante(oradores[oradorAtivoIdx].tempoFala);
-    setCronometroAtivo(true);
-  }
-  function pausarFala() {
-    setCronometroAtivo(false);
-  }
-  function encerrarFala() {
+  async function encerrarFala() {
     if (oradorAtivoIdx < 0) return;
     setCronometroAtivo(false);
     const orador = oradores[oradorAtivoIdx];
@@ -196,6 +189,28 @@ export default function Votacao() {
     setOradores(lista);
     setTempoRestante(0);
     setResumoFala("");
+
+    // --- Salvar toda a tribuna no painelAtivo ---
+    try {
+      await updateDoc(doc(db, "painelAtivo", "ativo"), {
+        tribunaAtual: {
+          oradores: lista,
+          oradorAtivoIdx,
+          horarioEncerramento: new Date().toISOString(),
+        }
+      });
+    } catch (e) {
+      console.error("Erro ao salvar tribuna no painelAtivo:", e);
+    }
+  }
+
+  function iniciarFala() {
+    if (oradorAtivoIdx < 0) return;
+    setTempoRestante(oradores[oradorAtivoIdx].tempoFala);
+    setCronometroAtivo(true);
+  }
+  function pausarFala() {
+    setCronometroAtivo(false);
   }
   function proximoOrador() {
     if (oradorAtivoIdx < oradores.length - 1) {
@@ -226,8 +241,6 @@ export default function Votacao() {
   }
 
   // --------- CONTROLE DE SESSÃO/VOTAÇÃO ---------
-  // ...ABAIXO TUDO IGUAL AO SEU CÓDIGO ORIGINAL...
-
   const alterarStatusSessao = async (novoStatus) => {
     if (!sessaoAtiva) return;
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
@@ -237,7 +250,14 @@ export default function Votacao() {
       statusSessao: novoStatus,
     });
     if (novoStatus === "Encerrada") {
-      await gerarAtaCorrigida();
+      await montarESalvarAtaCompleta(
+        sessaoAtiva,
+        vereadores,
+        habilitados,
+        materias,
+        materiasSelecionadas,
+        oradores
+      );
       setSessaoAtiva(null);
       setMaterias([]);
       setMateriasSelecionadas([]);
@@ -383,6 +403,103 @@ export default function Votacao() {
   };
 
   // ----------- IA -----------
+
+  async function montarESalvarAtaCompleta(sessaoAtiva, vereadores, habilitados, materias, materiasSelecionadas, oradores) {
+    // Busca painel ativo para pegar votações e tribuna
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    let painelData = {};
+    try {
+      const painelSnap = await getDocs(collection(db, "painelAtivo"));
+      painelData = painelSnap.docs.find(doc => doc.id === "ativo")?.data() || {};
+    } catch (e) {}
+
+    const presentes = vereadores.filter(v => habilitados.includes(v.id));
+    const materiasAta = materiasSelecionadas.map(id => materias.find(m => m.id === id)).filter(Boolean);
+    const tribuna = painelData.tribunaAtual?.oradores || oradores;
+    const mesaDiretora = sessaoAtiva?.mesa || [];
+    const topo = panelConfig?.nomeCamara || "Câmara Municipal";
+    const cidade = panelConfig?.cidade || "";
+    const dataSessao = sessaoAtiva?.data || new Date().toLocaleDateString();
+    const horaSessao = sessaoAtiva?.hora || new Date().toLocaleTimeString();
+
+    let ataTexto = `\n${topo}\n${cidade}\nATA DA SESSÃO PLENÁRIA\n\n`;
+    ataTexto += `Aos ${dataSessao}, às ${horaSessao}, realizou-se a sessão plenária sob a presidência de ${mesaDiretora[0]?.vereador || sessaoAtiva?.presidente || "-"}.\n`;
+
+    ataTexto += `\nPresentes:\n`;
+    ataTexto += presentes.length
+      ? presentes.map(v => `- ${v.nome} (${v.partido})`).join("\n")
+      : "-";
+    ataTexto += `\n`;
+
+    if (materiasAta.length) {
+      ataTexto += `\nOrdem do Dia:\n`;
+      materiasAta.forEach((m, i) => {
+        ataTexto += `${i + 1}. ${m.titulo || m.descricao || "Sem título"} (${m.tipo || "-"}) - Autor: ${m.autor || "-"} - Status: ${m.status}\n`;
+      });
+    }
+
+    if (tribuna && tribuna.length) {
+      ataTexto += `\nTribuna (Falas em tempo real):\n`;
+      tribuna.forEach(o => {
+        if (o.fala) {
+          ataTexto += `- ${o.nome} (${o.partido}) às ${o.horario || "-"}:\n`;
+          if (Array.isArray(o.fala)) {
+            ataTexto += o.fala.map(f => `    ${f}`).join("\n") + "\n";
+          } else {
+            ataTexto += `    ${o.fala}\n`;
+          }
+        }
+      });
+    }
+
+    if (painelData.votacaoAtual?.votos) {
+      ataTexto += `\nResultados das Votações:\n`;
+      Object.entries(painelData.votacaoAtual.votos).forEach(([id, voto]) => {
+        const ver = vereadores.find(v => v.id === id);
+        ataTexto += `- ${ver?.nome || id} (${ver?.partido || "-"}) votou: ${voto}\n`;
+      });
+    }
+
+    ataTexto += `\nNada mais havendo a tratar, a sessão foi encerrada pelo presidente ${mesaDiretora[0]?.vereador || sessaoAtiva?.presidente || "-"}, às ${new Date().toLocaleTimeString()}.\n`;
+
+    ataTexto += `\n\nAssinaturas da Mesa Diretora:\n\n`;
+    mesaDiretora.forEach((m) => {
+      ataTexto += `______________________________    ${m.vereador} (${m.cargo})\n\n`;
+    });
+
+    // --- Salva a ATA nos locais corretos ---
+    try {
+      // 1. Salva no painelAtivo/ativo (campo ataCompleta)
+      await updateDoc(painelRef, { ataCompleta: ataTexto });
+
+      // 2. Salva na sessão atual (campo ata)
+      if (sessaoAtiva?.id) {
+        await updateDoc(doc(db, "sessoes", sessaoAtiva.id), { ata: ataTexto });
+      }
+
+      // 3. Salva na coleção atas
+      const idSessao = sessaoAtiva?.id || null;
+      const novaAta = {
+        idSessao,
+        dataCriacao: new Date().toISOString(),
+        ataCompleta: ataTexto,
+        mesaDiretora: mesaDiretora,
+        assinaturas: [],
+        presentes: presentes.map(v => ({ id: v.id, nome: v.nome, partido: v.partido })),
+        materias: materiasAta,
+        tribuna: tribuna,
+        votacoes: painelData.votacaoAtual?.votos || {},
+      };
+      if (idSessao) {
+        await setDoc(doc(db, "atas", idSessao), novaAta, { merge: true });
+      } else {
+        await addDoc(collection(db, "atas"), novaAta);
+      }
+    } catch (e) {
+      console.error("Erro ao salvar ATA:", e);
+    }
+  }
+
   async function gerarAtaCorrigida() {
     setCarregandoAta(true);
     setAtaCorrigida("Gerando ata automática...");
@@ -774,9 +891,7 @@ export default function Votacao() {
         presidente={sessaoAtiva?.presidente}
         data={sessaoAtiva?.data}
       />
-
       <h2 className="painel-titulo">Painel de Controle de Sessões Plenárias</h2>
-
       <div className="abas-votacao">
         {["Controle de Sessão", "Controle de Votação", "Controle de Tribuna", "Controle de Presença", "IA"].map(tab => (
           <button
@@ -786,7 +901,6 @@ export default function Votacao() {
           >{tab}</button>
         ))}
       </div>
-
       <div className="conteudo-aba">
         {renderConteudoAba()}
       </div>
