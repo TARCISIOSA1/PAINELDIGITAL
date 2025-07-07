@@ -301,7 +301,7 @@ useEffect(() => {
     tribunaAtual,
     statusSessao,
     tipo,
-    titulo,
+    
   } = dadosPainel || {};
 
   // FULLSCREEN Tribuna
