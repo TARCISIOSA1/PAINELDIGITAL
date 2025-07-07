@@ -57,6 +57,7 @@ export default function Votacao() {
   const [respostaIA, setRespostaIA] = useState("");
   const [carregandoPergunta, setCarregandoPergunta] = useState(false);
 
+  // INCLUIR MESA DIRETORA NO PAINEL
   function gerarDadosSessaoPainel() {
     return {
       data: sessaoAtiva?.data || "",
@@ -69,6 +70,7 @@ export default function Votacao() {
       legislatura: legislaturaSelecionada?.descricao || "",
       numeroSessaoPlenaria: numeroSessaoOrdinaria || "",
       numeroSessaoLegislativa: numeroSessaoLegislativa || "",
+      mesa: Array.isArray(sessaoAtiva?.mesa) ? sessaoAtiva.mesa : [],
     };
   }
 
@@ -131,9 +133,13 @@ export default function Votacao() {
       setSessaoAtiva(sessao);
       setMaterias(sessao.ordemDoDia || []);
       setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      // NÃO setHabilitados aqui! Só pela função buscarHabilitadosPainel()
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
+      // AO CARREGAR, GARANTE SALVAR CAMPOS COMPLETOS NO PAINEL
+      await setDoc(doc(db, "painelAtivo", "ativo"), {
+        ...gerarDadosSessaoPainel(),
+        statusSessao: sessao.status || "Ativa",
+      }, { merge: true });
     } else {
       setSessaoAtiva(null);
       setMaterias([]);
@@ -159,7 +165,7 @@ export default function Votacao() {
     setBancoHoras(dados);
   };
 
-  // ATUALIZA PAINEL CAMPOS GERAIS
+  // ATUALIZA PAINEL CAMPOS GERAIS — SEMPRE INCLUI MESA
   async function atualizarPainelCamposGerais(statusSessaoCustom = null) {
     const painelRef = doc(db, "painelAtivo", "ativo");
     await setDoc(
@@ -926,13 +932,14 @@ export default function Votacao() {
     }
   }
 
-  // ---------- RENDER PRINCIPAL ----------
+// ---------- RENDER PRINCIPAL ----------
   return (
     <div className="votacao-container">
       <TopoInstitucional
         legislatura={legislaturaSelecionada}
         sessao={sessaoAtiva}
         presidente={sessaoAtiva?.presidente}
+        secretario={sessaoAtiva?.secretario}
         data={sessaoAtiva?.data}
       />
 
