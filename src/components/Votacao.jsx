@@ -125,7 +125,7 @@ function gerarDadosSessaoPainel() {
     } catch { setHabilitados([]); }
   }
 
- const carregarSessaoAtivaOuPrevista = async () => {
+const carregarSessaoAtivaOuPrevista = async () => {
   const snapshot = await getDocs(collection(db, "sessoes"));
   const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   let sessao = lista.find((s) => s.status === "Ativa");
@@ -154,7 +154,7 @@ function gerarDadosSessaoPainel() {
     setModalidade("Unica");
     setStatusVotacao("Preparando");
   }
-}
+}; 
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
