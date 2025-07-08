@@ -23,9 +23,7 @@ function LegendaWhisper({ ativo, tribunaAtual, dadosPainel, onLegenda }) {
   const streamRef = useRef(null);
   const ativoRef = useRef(ativo);
 
-  useEffect(() => {
-    ativoRef.current = ativo;
-  }, [ativo]);
+  useEffect(() => { ativoRef.current = ativo; }, [ativo]);
 
   useEffect(() => {
     let gravaLoop = false;
@@ -60,6 +58,7 @@ function LegendaWhisper({ ativo, tribunaAtual, dadosPainel, onLegenda }) {
               const texto = data.text || "⚠️ Nada transcrito.";
               onLegenda(texto);
 
+              // Salva fala na ata no backend (opcional)
               if (texto && tribunaAtual?.nome && dadosPainel?.data && tribunaAtual?.partido) {
                 await fetch("http://localhost:3333/api/atasFalas", {
                   method: "POST", headers: { "Content-Type": "application/json" },
@@ -100,8 +99,7 @@ function LegendaWhisper({ ativo, tribunaAtual, dadosPainel, onLegenda }) {
   return null;
 }
 
-// -------- Banner de Boas-Vindas --------
-function BannerBoasVindas({ frase, noticia }) {
+function BannerMensagemIA({ frase, noticia }) {
   return (
     <div className="banner-boasvindas">
       <h1>{frase || "Bem-vindos à sessão plenária!"}</h1>
@@ -127,6 +125,7 @@ export default function PainelVotacaoIA() {
   const [boasVindas, setBoasVindas] = useState("");
   const [msgEncerrada, setMsgEncerrada] = useState("");
   const [noticiaIA, setNoticiaIA] = useState("");
+  const [telaAuxiliar, setTelaAuxiliar] = useState(false);
 
   // Limpa legenda ao trocar de orador ou acabar tempo
   useEffect(() => {
@@ -157,10 +156,9 @@ export default function PainelVotacaoIA() {
       const votos = data.votacaoAtual?.votos;
       setVotosRegistrados(
         votos
-          ? Object.values(votos).map(item => ({ id: item.vereador_id, voto: item.voto || '' }))
+          ? Object.entries(votos).map(([id, voto]) => ({ id, voto }))
           : []
       );
-
       setTimerRed(!!(data.tribunaAtual?.tempoRestante <= 20 && data.tribunaAtual.tempoRestante > 0));
     });
     return () => unsubscribe();
@@ -274,6 +272,7 @@ export default function PainelVotacaoIA() {
           <div className="legenda-tribuna-centralizada">
             {legenda ? <span className="legenda-linha-centralizada">{legenda}</span> : <span style={{ color: '#888' }}>Legenda não disponível</span>}
           </div>
+          <button className="btn-tela-auxiliar" onClick={() => setTelaAuxiliar(true)}>Ir para Tela Auxiliar</button>
         </div>
       </div>
     );
@@ -303,9 +302,9 @@ export default function PainelVotacaoIA() {
       <div className="painel-ia-container painel-ia-encerrada" ref={containerRef}>
         <TopoInstitucional />
         {msgEncerrada ? (
-          <BannerBoasVindas frase={msgEncerrada} noticia={noticiaIA} />
+          <BannerMensagemIA frase={msgEncerrada} noticia={noticiaIA} />
         ) : (
-          <BannerBoasVindas frase={boasVindas} noticia={null} />
+          <BannerMensagemIA frase={boasVindas} noticia={null} />
         )}
         <div className="painel-institucional-animado" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <img
@@ -350,6 +349,7 @@ export default function PainelVotacaoIA() {
           <div className="tags-presentes">
             {presentes.length > 0 ? presentes.map(p => (
               <div key={p.id} className="tag-present">
+                <div className="tag-circulo" style={{ background: "#0f0", border: "2px solid #060" }} />
                 {p.foto ? <img src={p.foto} alt={p.nome} className="tag-foto" /> : <div className="tag-foto-placeholder" />}
                 <span className="tag-nome">{p.nome}</span>
                 {p.partido && <span className="tag-partido">{p.partido.toUpperCase()}</span>}
@@ -376,23 +376,23 @@ export default function PainelVotacaoIA() {
               {legenda ? <span className="legenda-linha-centralizada">{legenda}</span> : <span style={{ color: '#888' }}>Legenda não disponível</span>}
             </div>
             {tribunaAtual.tempoRestante > 0 && <button className="btn-full" onClick={() => setFullTribuna(true)}>Tela cheia</button>}
+            <button className="btn-tela-auxiliar" onClick={() => setTelaAuxiliar(true)}>Ir para Tela Auxiliar</button>
           </div>
         ) : <p>Nenhum orador na tribuna.</p>}
       </section>
 
       <section className="bloco-votacao-central">
         <h2>Ordem do Dia</h2>
-        {votacaoAtual?.materia ? (
+        {votacaoAtual?.materias && votacaoAtual.materias.length > 0 ? (
           <div className="conteudo-votacao-central">
-            <div className="votacao-detalhes">
-              <p><strong>Matéria:</strong> {votacaoAtual.materia}</p>
-              <p><strong>Tipo:</strong> {votacaoAtual.tipo || '—'}</p>
-              <p><strong>Status:</strong> <span className={`status-small status-${(votacaoAtual.status || '').replace(/ /g, '-').toLowerCase()}`}>{votacaoAtual.status || '—'}</span></p>
-              <p><strong>Autor:</strong> {votacaoAtual.autor || '—'}</p>
-              {votacaoAtual.resumo && (
-                <p><strong>Resumo:</strong> {votacaoAtual.resumo}</p>
-              )}
-            </div>
+            {votacaoAtual.materias.map((mat, idx) => (
+              <div key={idx} className="votacao-detalhes">
+                <p><strong>Matéria:</strong> {mat.titulo}</p>
+                <p><strong>Tipo:</strong> {mat.tipo || '—'}</p>
+                <p><strong>Status:</strong> <span className={`status-small status-${(mat.status || '').replace(/ /g, '-').toLowerCase()}`}>{mat.status || '—'}</span></p>
+                <p><strong>Autor:</strong> {mat.autor || '—'}</p>
+              </div>
+            ))}
             {votosRegistrados.length > 0 ? (
               <table className="tabela-votos-central">
                 <thead>
@@ -435,6 +435,7 @@ export default function PainelVotacaoIA() {
                 <button className="btn-full" onClick={() => setFullVotacao(true)}>Tela cheia</button>
               </div>
             )}
+            <button className="btn-tela-auxiliar" onClick={() => setTelaAuxiliar(true)}>Ir para Tela Auxiliar</button>
           </div>
         ) : <p>Nenhuma matéria em votação.</p>}
       </section>
