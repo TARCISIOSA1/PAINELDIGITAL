@@ -473,8 +473,6 @@ export default function Votacao() {
 
   // ----------- RENDER DE ABAS -----------
   function renderConteudoAba() {
-     // ----------- RENDER DE ABAS -----------
-  function renderConteudoAba() {
     switch (aba) {
       case "Controle de Sessão":
         return (
@@ -886,7 +884,6 @@ export default function Votacao() {
         return null;
     }
   }
-
 
   // ----------- RENDER PRINCIPAL -----------
   return (
