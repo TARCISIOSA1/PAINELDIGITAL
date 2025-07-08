@@ -6,18 +6,102 @@ import {
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
-import "./Votacao.css"; // <- Remova o "s"!
+import "./Votacao.css";
 import panelConfig from "../config/panelConfig.json";
 
+// =================== FUNÇÃO DE SALVAR PAINEL ATIVO COMPLETO =====================
+async function salvarPainelAtivoCompleto({
+  sessaoAtiva,
+  vereadores,
+  habilitados,
+  materias,
+  oradores,
+  oradorAtivoIdx,
+  tempoRestante,
+  resumoFala,
+  cronometroAtivo,
+  bancoHoras,
+  tipoVotacao,
+  quorumTipo,
+  quorumMinimo,
+  modalidade,
+  tempoVotacao,
+  votos,
+  painelRTC,
+  observacoes,
+  pauta
+}) {
+  await setDoc(doc(db, "painelAtivo", "ativo"), {
+    tipo: sessaoAtiva?.tipo || "",
+    data: sessaoAtiva?.data || "",
+    hora: sessaoAtiva?.hora || "",
+    statusSessao: sessaoAtiva?.status || "",
+    local: sessaoAtiva?.local || "",
+    legislatura: sessaoAtiva?.idLegislatura || "",
+    pauta: pauta || sessaoAtiva?.pauta || "",
+    observacoes: observacoes || sessaoAtiva?.observacoes || "",
+    mesaDiretora: (sessaoAtiva?.mesa || []).map(m => ({
+      nome: m.vereador,
+      cargo: m.cargo,
+      id: m.id || "",
+    })),
+    parlamentares: vereadores.map(v => ({
+      id: v.id,
+      nome: v.nome,
+      partido: v.partido,
+      foto: v.foto || "",
+      presente: habilitados.includes(v.id),
+    })),
+    ordemDoDia: (materias || []).map(m => ({
+      id: m.id,
+      titulo: m.titulo || m.descricao || "",
+      tipo: m.tipo || "",
+      autor: m.autor || "",
+      status: m.status || "",
+    })),
+    ata: sessaoAtiva?.ata || "",
+    tribuna: {
+      oradores: (oradores || []).map((o, idx) => ({
+        id: o.id,
+        nome: o.nome,
+        partido: o.partido,
+        tempoFala: o.tempoFala,
+        saldo: o.saldo,
+        fala: o.fala || "",
+        horario: o.horario || "",
+        ordem: idx + 1,
+        externo: !!o.externo,
+      })),
+      oradorAtivoIdx,
+      tempoRestante,
+      resumoFala,
+      cronometroAtivo,
+      bancoHoras: bancoHoras || {},
+    },
+    tipoVotacao: tipoVotacao || "",
+    quorumTipo: quorumTipo || "",
+    quorumMinimo: quorumMinimo || 0,
+    modalidade: modalidade || "",
+    tempoVotacao: tempoVotacao || "",
+    habilitados: habilitados || [],
+    votos: votos || {},
+    rtc: painelRTC || null,
+    atualizadoEm: new Date().toISOString(),
+  }, { merge: true });
+}
+// =============================================================================
+
+// =============== QUÓRUM OPTIONS =================================
 const QUORUM_OPTIONS = [
   { label: "Quórum Simples", value: "simples", regra: "Maioria simples dos presentes (n/2 + 1)", formula: n => Math.ceil(n / 2) },
   { label: "Quórum de Suspensão", value: "suspensao", regra: "1/3 dos vereadores", formula: n => Math.ceil(n / 3) },
   { label: "Quórum de Votação", value: "votacao", regra: "Maioria absoluta (50%+1 dos membros)", formula: n => Math.ceil(n / 2) + 1 },
   { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
 ];
+// =================================================================
 
 export default function Votacao() {
-  // ----------------------- ESTADOS PRINCIPAIS ----------------------
+  // --------- ESTADOS PRINCIPAIS ----------
   const [aba, setAba] = useState("Controle de Sessão");
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
   const [materias, setMaterias] = useState([]);
@@ -29,9 +113,9 @@ export default function Votacao() {
   const [statusVotacao, setStatusVotacao] = useState("Preparando");
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
-  const [tempoVotacao, setTempoVotacao] = useState(""); // opcional
+  const [tempoVotacao, setTempoVotacao] = useState("");
 
-  // --------------------- TRIBUNA E SALDO ---------------------
+  // ----------- TRIBUNA E SALDO ------------
   const [oradores, setOradores] = useState([]);
   const [tempoPadrao, setTempoPadrao] = useState(180);
   const [oradorAtivoIdx, setOradorAtivoIdx] = useState(-1);
@@ -41,13 +125,13 @@ export default function Votacao() {
   const [bancoHoras, setBancoHoras] = useState({});
   const [tempoExtra, setTempoExtra] = useState(0);
 
-  // -------------------- PRESENÇA/LEGISLATURA --------------------
+  // --------- PRESENÇA/LEGISLATURA ------------
   const [legislaturas, setLegislaturas] = useState([]);
   const [legislaturaSelecionada, setLegislaturaSelecionada] = useState(null);
   const [numeroSessaoOrdinaria, setNumeroSessaoOrdinaria] = useState(0);
   const [numeroSessaoLegislativa, setNumeroSessaoLegislativa] = useState(0);
 
-  // --------------------- IA E ATA ---------------------
+  // --------- IA E ATA ---------------
   const [abaIApergunta, setAbaIApergunta] = useState("");
   const [abaIAresposta, setAbaIAresposta] = useState("");
   const [ataEditor, setAtaEditor] = useState("");
@@ -55,8 +139,9 @@ export default function Votacao() {
   const [carregandoAta, setCarregandoAta] = useState(false);
 
   const intervalRef = useRef(null);
+  const salvarPainelTimeout = useRef(null);
 
-  // ------------------ INICIALIZAÇÃO ------------------
+  // =========== INICIALIZAÇÃO ============
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -87,68 +172,98 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
-  // ------------------- LOAD DADOS -------------------
-const carregarSessaoAtivaOuPrevista = async () => {
-  // Busca sessões
-  const snapshot = await getDocs(collection(db, "sessoes"));
-  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-  let sessao = lista.find((s) => s.status === "Ativa");
-  if (!sessao) {
-    sessao = lista.find(
-      (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
-    );
-  }
+  // =============== SALVA PAINEL ATIVO DEBOUNCED ==============
+  useEffect(() => {
+    if (!sessaoAtiva) return;
+    if (salvarPainelTimeout.current) clearTimeout(salvarPainelTimeout.current);
+    salvarPainelTimeout.current = setTimeout(() => {
+      salvarPainelAtivoCompleto({
+        sessaoAtiva,
+        vereadores,
+        habilitados,
+        materias,
+        oradores,
+        oradorAtivoIdx,
+        tempoRestante,
+        resumoFala,
+        cronometroAtivo,
+        bancoHoras,
+        tipoVotacao,
+        quorumTipo,
+        quorumMinimo,
+        modalidade,
+        tempoVotacao,
+        votos: {},        // Substitua se tem objeto de votos salvo
+        painelRTC: null,
+        observacoes: "",
+        pauta: ""
+      });
+    }, 800); // Salva no máximo 1x a cada 800ms após alterações
+    // eslint-disable-next-line
+  }, [
+    sessaoAtiva, vereadores, habilitados, materias, oradores, oradorAtivoIdx,
+    tempoRestante, resumoFala, cronometroAtivo, bancoHoras,
+    tipoVotacao, quorumTipo, quorumMinimo, modalidade, tempoVotacao
+  ]);
+  // ============================================================
 
-  if (sessao) {
-    setSessaoAtiva(sessao);
-    setMaterias(sessao.ordemDoDia || []);
-    setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-    
-    // --- BUSCA HABILITADOS do painelAtivo/ativo ---
-    let habilitadosPainel = [];
-    try {
-      const painelAtivoSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
-      const painelData = painelAtivoSnap.exists() ? painelAtivoSnap.data() : {};
-      if (painelData && Array.isArray(painelData.habilitados)) {
-        habilitadosPainel = painelData.habilitados;
-      }
-    } catch {}
-    // Fallback: se não tem em painelAtivo, pega da sessão
-    if (habilitadosPainel.length > 0) {
-      setHabilitados(habilitadosPainel);
-    } else {
-      setHabilitados(
-        Array.isArray(sessao.presentes)
-          ? sessao.presentes.map((p) => (p.id ? p.id : p))
-          : []
+  // ------------------- LOAD DADOS -------------------
+  const carregarSessaoAtivaOuPrevista = async () => {
+    const snapshot = await getDocs(collection(db, "sessoes"));
+    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    let sessao = lista.find((s) => s.status === "Ativa");
+    if (!sessao) {
+      sessao = lista.find(
+        (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
       );
     }
-
-    setTipoVotacao(sessao.tipoVotacao || "Simples");
-    setModalidade(sessao.modalidade || "Unica");
-    setTempoVotacao(sessao.tempoVotacao || "");
-    if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
-      setOradores(sessao.tribuna.map(o => ({
-        ...o,
-        saldo: 0,
-        fala: o.fala || "",
-        horario: "",
-      })));
+    if (sessao) {
+      setSessaoAtiva(sessao);
+      setMaterias(sessao.ordemDoDia || []);
+      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+      // --- BUSCA HABILITADOS do painelAtivo/ativo ---
+      let habilitadosPainel = [];
+      try {
+        const painelAtivoSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
+        const painelData = painelAtivoSnap.exists() ? painelAtivoSnap.data() : {};
+        if (painelData && Array.isArray(painelData.habilitados)) {
+          habilitadosPainel = painelData.habilitados;
+        }
+      } catch {}
+      if (habilitadosPainel.length > 0) {
+        setHabilitados(habilitadosPainel);
+      } else {
+        setHabilitados(
+          Array.isArray(sessao.presentes)
+            ? sessao.presentes.map((p) => (p.id ? p.id : p))
+            : []
+        );
+      }
+      setTipoVotacao(sessao.tipoVotacao || "Simples");
+      setModalidade(sessao.modalidade || "Unica");
+      setTempoVotacao(sessao.tempoVotacao || "");
+      if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
+        setOradores(sessao.tribuna.map(o => ({
+          ...o,
+          saldo: 0,
+          fala: o.fala || "",
+          horario: "",
+        })));
+      } else {
+        setOradores([]);
+      }
     } else {
+      setSessaoAtiva(null);
+      setMaterias([]);
+      setMateriasSelecionadas([]);
+      setHabilitados([]);
+      setTipoVotacao("Simples");
+      setModalidade("Unica");
+      setTempoVotacao("");
+      setStatusVotacao("Preparando");
       setOradores([]);
     }
-  } else {
-    setSessaoAtiva(null);
-    setMaterias([]);
-    setMateriasSelecionadas([]);
-    setHabilitados([]);
-    setTipoVotacao("Simples");
-    setModalidade("Unica");
-    setTempoVotacao("");
-    setStatusVotacao("Preparando");
-    setOradores([]);
-  }
-};
+  };
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
@@ -164,7 +279,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
     setBancoHoras(dados);
   };
 
-  // --------------- TRIBUNA & SALDO FUNÇÕES -----------------
+  // ==================== TRIBUNA E FUNÇÕES ========================
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (cronometroAtivo && oradorAtivoIdx >= 0 && tempoRestante > 0) {
@@ -182,7 +297,7 @@ const carregarSessaoAtivaOuPrevista = async () => {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [cronometroAtivo, oradorAtivoIdx, tempoRestante]);
 
-  // Salva a tribuna SEMPRE que qualquer coisa mudar
+  // Salva a tribuna SEMPRE que qualquer coisa mudar (também é salva no painelAtivo completo)
   useEffect(() => {
     updateDoc(doc(db, "painelAtivo", "ativo"), {
       tribunaAtual: {
@@ -195,7 +310,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
     }).catch(()=>{});
   }, [oradores, oradorAtivoIdx, tempoRestante, resumoFala, cronometroAtivo]);
 
-  // Usar saldo: o saldo deve ser SEMPRE o tempo restante atual, nunca somar/somar múltiplas vezes
   function usarSaldoHoras(idx) {
     const orador = oradores[idx];
     const saldoAtual = bancoHoras[orador.id] || 0;
@@ -204,7 +318,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
       lista[idx].tempoFala = saldoAtual;
       setOradores(lista);
       setBancoHoras(prev => ({ ...prev, [orador.id]: 0 }));
-      // Salvar no painelAtivo
       updateDoc(doc(db, "painelAtivo", "ativo"), {
         bancoHoras: { ...bancoHoras, [orador.id]: 0 }
       });
@@ -224,13 +337,11 @@ const carregarSessaoAtivaOuPrevista = async () => {
     if (oradorAtivoIdx < 0) return;
     setCronometroAtivo(false);
     const orador = oradores[oradorAtivoIdx];
-    // O saldo passa a ser o tempo restante daquela fala
     if (orador.id && !orador.externo) {
       setBancoHoras(prev => ({
         ...prev,
         [orador.id]: tempoRestante
       }));
-      // Salva saldo de horas imediatamente no painelAtivo
       await updateDoc(doc(db, "painelAtivo", "ativo"), {
         bancoHoras: { ...bancoHoras, [orador.id]: tempoRestante }
       });
@@ -268,7 +379,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
   function zerarSaldos() {
     setBancoHoras({});
     setOradores(oradores.map(o => ({ ...o, saldo: 0 })));
-    // Limpa painelAtivo também
     updateDoc(doc(db, "painelAtivo", "ativo"), { bancoHoras: {} });
   }
 
@@ -683,7 +793,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
                           ? habilitados.filter((x) => x !== p.id)
                           : [...habilitados, p.id];
                         setHabilitados(novo);
-                        // Salva sempre no painelAtivo
                         updateDoc(doc(db, "painelAtivo", "ativo"), {
                           habilitados: novo
                         });
@@ -813,7 +922,6 @@ const carregarSessaoAtivaOuPrevista = async () => {
                             ? habilitados.filter((x) => x !== v.id)
                             : [...habilitados, v.id];
                           setHabilitados(novo);
-                          // Salva sempre no painelAtivo
                           updateDoc(doc(db, "painelAtivo", "ativo"), {
                             habilitados: novo
                           });
