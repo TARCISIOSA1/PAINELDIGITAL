@@ -63,6 +63,19 @@ export default function Votacao() {
     carregarBancoHoras();
   }, []);
 
+  async function zerarPainelAtivo() {
+    const painelRef = doc(db, "painelAtivo", "ativo");
+    await setDoc(painelRef, {
+      statusSessao: "",
+      dataHoraInicio: "",
+      ordemDoDia: [],
+      votacaoAtual: {},
+      tribunaAtual: {},
+      habilitados: [],
+      ataCompleta: "",
+    }, { merge: false }); // merge false apaga tudo e reescreve apenas os campos acima!
+  }
+
   useEffect(() => {
     const carregarLegislaturaEContagem = async () => {
       const snapshot = await getDocs(collection(db, "legislaturas"));
@@ -174,25 +187,25 @@ export default function Votacao() {
     }
   }
 
+  // --- REGRA CERTA: saldo = tempo restante, nunca soma!
   async function encerrarFala() {
     if (oradorAtivoIdx < 0) return;
     setCronometroAtivo(false);
     const orador = oradores[oradorAtivoIdx];
     if (orador.id && !orador.externo) {
-      const saldoAntigo = bancoHoras[orador.id] || 0;
       setBancoHoras(prev => ({
         ...prev,
-        [orador.id]: saldoAntigo + tempoRestante
+        [orador.id]: tempoRestante
       }));
+      await setDoc(doc(db, "bancoHoras", orador.id), { tempo: tempoRestante }, { merge: true });
     }
     const lista = [...oradores];
-    lista[oradorAtivoIdx].saldo = (lista[oradorAtivoIdx].saldo || 0) + tempoRestante;
+    lista[oradorAtivoIdx].saldo = tempoRestante;
     lista[oradorAtivoIdx].fala = resumoFala;
     lista[oradorAtivoIdx].horario = new Date().toLocaleTimeString();
     setOradores(lista);
     setTempoRestante(0);
     setResumoFala("");
-    // Salva tribuna no painelAtivo
     try {
       await updateDoc(doc(db, "painelAtivo", "ativo"), {
         tribunaAtual: {
@@ -235,6 +248,7 @@ export default function Votacao() {
       lista[idx].tempoFala = saldo;
       setOradores(lista);
       setBancoHoras(prev => ({ ...prev, [orador.id]: 0 }));
+      setDoc(doc(db, "bancoHoras", orador.id), { tempo: 0 }, { merge: true });
     }
   }
   function zerarSaldos() {
@@ -252,7 +266,7 @@ export default function Votacao() {
       statusSessao: novoStatus,
     });
     if (novoStatus === "Encerrada") {
-      zerarPainelAtivo();
+      await zerarPainelAtivo();
     }
   };
   const iniciarSessao = async () => {
@@ -274,9 +288,6 @@ export default function Votacao() {
       await setDoc(doc(db, "bancoHoras", id), { tempo: 0 }, { merge: true });
     }
   };
-  async function zerarPainelAtivo() {
-    await setDoc(doc(db, "painelAtivo", "ativo"), {}, { merge: true });
-  }
 
   function moverMateria(idx, direcao) {
     setMaterias((prev) => {
