@@ -1,3 +1,4 @@
+// src/components/CadastroParlamentar.jsx
 import React, { useState, useEffect } from "react";
 import {
   collection,
@@ -17,27 +18,27 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import "./CadastroParlamentar.css";
 
-const camposVazios = {
-  nome: "",
-  numero: "",
-  numeroPartido: "",
-  partido: "",
-  votos: "",
-  telefone: "",
-  email: "",
-  sexo: "",
-  tipoUsuario: "Vereador",
-  status: "Ativo",
-  biografia: "",
-  foto: "",
-  uid: "",
-};
-
 export default function CadastroParlamentar() {
   const [usuarios, setUsuarios] = useState([]);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState("");
-  const [editandoId, setEditandoId] = useState(null);
-  const [form, setForm] = useState({ ...camposVazios });
+  const [editando, setEditando] = useState(false);
+
+  const [form, setForm] = useState({
+    nome: "",
+    numero: "",
+    numeroPartido: "",
+    partido: "",
+    votos: "",
+    telefone: "",
+    email: "",
+    sexo: "",
+    tipoUsuario: "Vereador",
+    status: "Ativo",
+    biografia: "",
+    foto: "",
+    uid: "",
+  });
+
   const [fotoFile, setFotoFile] = useState(null);
   const [parlamentares, setParlamentares] = useState([]);
   const [filtroNome, setFiltroNome] = useState("");
@@ -64,6 +65,7 @@ export default function CadastroParlamentar() {
     setUsuarios(lista);
   };
 
+  // Ao selecionar um usuário, puxa dados dele
   const preencherCamposDoUsuario = (id) => {
     setUsuarioSelecionado(id);
     const user = usuarios.find((u) => u.id === id);
@@ -83,7 +85,6 @@ export default function CadastroParlamentar() {
         uid: user.uid || "",
       }));
     }
-    setFotoFile(null); // sempre limpar preview ao trocar usuário
   };
 
   const handleChange = (e) => {
@@ -92,39 +93,56 @@ export default function CadastroParlamentar() {
   };
 
   const handleUploadFoto = async () => {
-    if (!fotoFile) return form.foto;
-    const storageRef = ref(storage, `fotosParlamentares/${Date.now()}-${fotoFile.name}`);
-    await uploadBytes(storageRef, fotoFile);
-    return await getDownloadURL(storageRef);
+    try {
+      if (!fotoFile) return form.foto;
+      const storageRef = ref(storage, `fotosParlamentares/${Date.now()}-${fotoFile.name}`);
+      await uploadBytes(storageRef, fotoFile);
+      return await getDownloadURL(storageRef);
+    } catch (e) {
+      alert("Erro ao fazer upload da foto: " + e.message);
+      return form.foto;
+    }
   };
 
+  // --- SALVAR (criar ou editar) ---
   const salvarParlamentar = async () => {
     try {
+      // Sempre salva com o mesmo ID do usuário selecionado!
+      if (!usuarioSelecionado) {
+        alert("Selecione um usuário!");
+        return;
+      }
+      if (!form.uid) {
+        alert("UID do usuário não encontrado! Selecione novamente.");
+        return;
+      }
       const urlFoto = await handleUploadFoto();
       const dados = { ...form, foto: urlFoto };
 
-      if (!usuarioSelecionado && !editandoId) {
-        alert("Selecione um usuário para vincular o UID do parlamentar!");
-        return;
-      }
+      await setDoc(doc(db, "parlamentares", usuarioSelecionado), dados, { merge: true });
 
-      if (editandoId) {
-        await setDoc(doc(db, "parlamentares", editandoId), dados, { merge: true });
-        alert("Parlamentar salvo/atualizado!");
-      } else {
-        await setDoc(doc(db, "parlamentares", usuarioSelecionado), dados, { merge: true });
-        alert("Parlamentar salvo!");
-      }
-
-      // Limpa campos ao finalizar (inclusive fotoFile!)
-      setForm({ ...camposVazios });
+      alert(editando ? "Parlamentar atualizado!" : "Parlamentar salvo!");
+      setEditando(false);
+      setForm({
+        nome: "",
+        numero: "",
+        numeroPartido: "",
+        partido: "",
+        votos: "",
+        telefone: "",
+        email: "",
+        sexo: "",
+        tipoUsuario: "Vereador",
+        status: "Ativo",
+        biografia: "",
+        foto: "",
+        uid: "",
+      });
       setFotoFile(null);
       setUsuarioSelecionado("");
-      setEditandoId(null);
       carregarParlamentares();
       setPagina(0);
     } catch (e) {
-      console.error("ERRO AO SALVAR:", e);
       alert("Erro ao salvar parlamentar: " + e.message);
     }
   };
@@ -136,11 +154,34 @@ export default function CadastroParlamentar() {
     }
   };
 
+  // Ao editar, não pode trocar usuário. Só edita os dados dele!
   const editarParlamentar = (p) => {
     setForm({ ...p });
-    setEditandoId(p.id);
     setUsuarioSelecionado(p.id);
-    setFotoFile(null); // LIMPA PREVIEW DA FOTO!
+    setEditando(true);
+    setFotoFile(null); // Sempre reseta foto ao editar, previne bug!
+  };
+
+  // Quando cancelar edição, limpa tudo
+  const cancelarEdicao = () => {
+    setEditando(false);
+    setForm({
+      nome: "",
+      numero: "",
+      numeroPartido: "",
+      partido: "",
+      votos: "",
+      telefone: "",
+      email: "",
+      sexo: "",
+      tipoUsuario: "Vereador",
+      status: "Ativo",
+      biografia: "",
+      foto: "",
+      uid: "",
+    });
+    setFotoFile(null);
+    setUsuarioSelecionado("");
   };
 
   const carregarImagemBase64 = (url) => {
@@ -209,6 +250,42 @@ export default function CadastroParlamentar() {
     docPDF.save("parlamentares-filtrados.pdf");
   };
 
+  // ======= MIGRAÇÃO: ATUALIZAR ID DE PARLAMENTARES PARA SER IGUAL AO DO USUÁRIO ==========
+  // ATENÇÃO: Só execute se quiser corrigir parlamentares antigos!
+  const migrarParlamentaresParaIdUsuario = async () => {
+    const snapParlamentares = await getDocs(collection(db, "parlamentares"));
+    const snapUsuarios = await getDocs(collection(db, "usuarios"));
+    const usuarios = snapUsuarios.docs.map(u => ({ id: u.id, ...u.data() }));
+
+    const batch = writeBatch(db);
+    let migrados = 0;
+    for (let d of snapParlamentares.docs) {
+      const parlamentar = d.data();
+      // Tenta achar usuário correspondente por email OU por uid OU por nome
+      const usuario = usuarios.find(
+        u =>
+          (parlamentar.uid && (u.uid === parlamentar.uid || u.id === parlamentar.uid)) ||
+          (parlamentar.email && u.email === parlamentar.email) ||
+          (parlamentar.nome && u.nome === parlamentar.nome)
+      );
+      if (usuario && d.id !== usuario.id) {
+        // Cria parlamentar com ID igual ao usuário
+        batch.set(doc(db, "parlamentares", usuario.id), { ...parlamentar, uid: usuario.uid });
+        // Apaga o antigo
+        batch.delete(doc(db, "parlamentares", d.id));
+        migrados++;
+      }
+    }
+    if (migrados > 0) {
+      await batch.commit();
+      alert(`${migrados} parlamentares migrados para ID igual ao do usuário!`);
+      carregarParlamentares();
+    } else {
+      alert("Nenhum parlamentar para migrar ou já está tudo certo.");
+    }
+  };
+  // ===============================================================================
+
   // PAGINAÇÃO
   const filtrados = parlamentares
     .filter((p) =>
@@ -230,7 +307,11 @@ export default function CadastroParlamentar() {
 
       <div className="formulario">
         <label>Selecionar Usuário Cadastrado</label>
-        <select value={usuarioSelecionado} onChange={(e) => preencherCamposDoUsuario(e.target.value)}>
+        <select
+          value={usuarioSelecionado}
+          onChange={e => preencherCamposDoUsuario(e.target.value)}
+          disabled={editando} // Desabilita ao editar
+        >
           <option value="">-- Selecione --</option>
           {usuarios.map((u) => (
             <option key={u.id} value={u.id}>{u.nome}</option>
@@ -284,31 +365,16 @@ export default function CadastroParlamentar() {
         />
         <div className="foto-preview">
           {fotoFile
-            ? (
-              <img
-                src={URL.createObjectURL(fotoFile)}
-                alt="Preview"
-              />
-            )
+            ? <img src={URL.createObjectURL(fotoFile)} alt="Preview" />
             : form.foto
-              ? (
-                <img
-                  src={form.foto}
-                  alt="Foto"
-                />
-              )
+              ? <img src={form.foto} alt="Foto" />
               : <span>Sem foto</span>
           }
         </div>
 
-        <button onClick={salvarParlamentar}>Salvar</button>
-        {editandoId && (
-          <button style={{ backgroundColor: "#999" }} onClick={() => {
-            setEditandoId(null);
-            setForm({ ...camposVazios });
-            setFotoFile(null);
-            setUsuarioSelecionado("");
-          }}>Cancelar Edição</button>
+        <button onClick={salvarParlamentar}>{editando ? "Salvar Alterações" : "Salvar"}</button>
+        {editando && (
+          <button style={{ backgroundColor: "#999" }} onClick={cancelarEdicao}>Cancelar Edição</button>
         )}
       </div>
 
@@ -388,6 +454,9 @@ export default function CadastroParlamentar() {
           >Próxima</button>
         </div>
       )}
+
+      {/* Botão de migração opcional */}
+      {/* <button onClick={migrarParlamentaresParaIdUsuario}>Migrar IDs Antigos</button> */}
     </div>
   );
 }
