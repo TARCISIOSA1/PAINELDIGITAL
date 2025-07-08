@@ -149,6 +149,51 @@ export default function Votacao() {
     carregarVereadores();
     carregarBancoHoras();
   }, []);
+useEffect(() => {
+  async function carregarPainelAtivo() {
+    const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
+    if (painelSnap.exists()) {
+      const data = painelSnap.data();
+
+      // Popular todos os estados com os dados do Firestore
+      setSessaoAtiva(sa => ({
+        ...sa,
+        tipo: data.tipo || "",
+        data: data.data || "",
+        hora: data.hora || "",
+        status: data.statusSessao || "",
+        local: data.local || "",
+        pauta: data.pauta || "",
+        observacoes: data.observacoes || "",
+        idLegislatura: data.legislatura || "",
+        mesa: data.mesaDiretora || [],
+      }));
+
+      setNumeroSessaoOrdinaria(data.numeroSessaoOrdinaria || 0);
+      setNumeroSessaoLegislativa(data.numeroSessaoLegislativa || 0);
+
+      setHabilitados(data.habilitados || []);
+      setVereadores(data.parlamentares || []);
+      setMaterias(data.ordemDoDia || []);
+      setTipoVotacao(data.tipoVotacao || "Simples");
+      setModalidade(data.modalidade || "Unica");
+      setTempoVotacao(data.tempoVotacao || "");
+      setQuorumTipo(data.quorumTipo || "simples");
+      setQuorumMinimo(data.quorumMinimo || 0);
+
+      // Tribuna
+      setOradores(data.tribuna?.oradores || []);
+      setOradorAtivoIdx(data.tribuna?.oradorAtivoIdx ?? -1);
+      setTempoRestante(data.tribuna?.tempoRestante ?? 0);
+      setCronometroAtivo(data.tribuna?.cronometroAtivo ?? false);
+      setResumoFala(data.tribuna?.resumoFala ?? "");
+      setBancoHoras(data.tribuna?.bancoHoras ?? {});
+
+      // ...carregue outros campos que desejar
+    }
+  }
+  carregarPainelAtivo();
+}, []);
 
   useEffect(() => {
     const carregarLegislaturaEContagem = async () => {
