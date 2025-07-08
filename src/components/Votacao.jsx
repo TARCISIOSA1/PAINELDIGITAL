@@ -1,3 +1,4 @@
+// Votacao.jsx
 import React, { useEffect, useState, useRef } from "react";
 import {
   collection, getDocs, doc, updateDoc, setDoc, addDoc
@@ -8,7 +9,6 @@ import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 import "./Votacao.css";
 import panelConfig from "../config/panelConfig.json";
 
-// -- Constantes
 const QUORUM_OPTIONS = [
   { label: "Quórum Simples", value: "simples", regra: "Maioria simples dos presentes (n/2 + 1)", formula: n => Math.ceil(n / 2) },
   { label: "Quórum de Suspensão", value: "suspensao", regra: "1/3 dos vereadores", formula: n => Math.ceil(n / 3) },
@@ -17,7 +17,7 @@ const QUORUM_OPTIONS = [
 ];
 
 export default function Votacao() {
-  // Estados principais
+  // ----------------------- ESTADOS PRINCIPAIS ----------------------
   const [aba, setAba] = useState("Controle de Sessão");
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
   const [materias, setMaterias] = useState([]);
@@ -31,7 +31,7 @@ export default function Votacao() {
   const [quorumMinimo, setQuorumMinimo] = useState(0);
   const [tempoVotacao, setTempoVotacao] = useState(""); // opcional
 
-  // Tribuna
+  // --------------------- TRIBUNA E SALDO ---------------------
   const [oradores, setOradores] = useState([]);
   const [tempoPadrao, setTempoPadrao] = useState(180);
   const [oradorAtivoIdx, setOradorAtivoIdx] = useState(-1);
@@ -41,13 +41,13 @@ export default function Votacao() {
   const [bancoHoras, setBancoHoras] = useState({});
   const [tempoExtra, setTempoExtra] = useState(0);
 
-  // Presença e legislatura
+  // -------------------- PRESENÇA/LEGISLATURA --------------------
   const [legislaturas, setLegislaturas] = useState([]);
   const [legislaturaSelecionada, setLegislaturaSelecionada] = useState(null);
   const [numeroSessaoOrdinaria, setNumeroSessaoOrdinaria] = useState(0);
   const [numeroSessaoLegislativa, setNumeroSessaoLegislativa] = useState(0);
 
-  // ATA/IA
+  // --------------------- IA E ATA ---------------------
   const [abaIApergunta, setAbaIApergunta] = useState("");
   const [abaIAresposta, setAbaIAresposta] = useState("");
   const [ataEditor, setAtaEditor] = useState("");
@@ -56,25 +56,12 @@ export default function Votacao() {
 
   const intervalRef = useRef(null);
 
-  // --- Inicialização
+  // ------------------ INICIALIZAÇÃO ------------------
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
     carregarBancoHoras();
   }, []);
-
-  async function zerarPainelAtivo() {
-    const painelRef = doc(db, "painelAtivo", "ativo");
-    await setDoc(painelRef, {
-      statusSessao: "",
-      dataHoraInicio: "",
-      ordemDoDia: [],
-      votacaoAtual: {},
-      tribunaAtual: {},
-      habilitados: [],
-      ataCompleta: "",
-    }, { merge: false }); // merge false apaga tudo e reescreve apenas os campos acima!
-  }
 
   useEffect(() => {
     const carregarLegislaturaEContagem = async () => {
@@ -100,7 +87,7 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
-  // Sessão
+  // ------------------- LOAD DADOS -------------------
   const carregarSessaoAtivaOuPrevista = async () => {
     const snapshot = await getDocs(collection(db, "sessoes"));
     const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
@@ -122,7 +109,6 @@ export default function Votacao() {
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
       setTempoVotacao(sessao.tempoVotacao || "");
-      // Tribuna
       if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
         setOradores(sessao.tribuna.map(o => ({
           ...o,
@@ -160,7 +146,7 @@ export default function Votacao() {
     setBancoHoras(dados);
   };
 
-  // --------- CONTROLE DE TRIBUNA ---------
+  // --------------- TRIBUNA & SALDO FUNÇÕES -----------------
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (cronometroAtivo && oradorAtivoIdx >= 0 && tempoRestante > 0) {
@@ -178,6 +164,35 @@ export default function Votacao() {
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [cronometroAtivo, oradorAtivoIdx, tempoRestante]);
 
+  // Salva a tribuna SEMPRE que qualquer coisa mudar
+  useEffect(() => {
+    updateDoc(doc(db, "painelAtivo", "ativo"), {
+      tribunaAtual: {
+        oradores,
+        oradorAtivoIdx,
+        tempoRestante,
+        resumoFala,
+        cronometroAtivo
+      }
+    }).catch(()=>{});
+  }, [oradores, oradorAtivoIdx, tempoRestante, resumoFala, cronometroAtivo]);
+
+  // Usar saldo: o saldo deve ser SEMPRE o tempo restante atual, nunca somar/somar múltiplas vezes
+  function usarSaldoHoras(idx) {
+    const orador = oradores[idx];
+    const saldoAtual = bancoHoras[orador.id] || 0;
+    if (saldoAtual > 0) {
+      const lista = [...oradores];
+      lista[idx].tempoFala = saldoAtual;
+      setOradores(lista);
+      setBancoHoras(prev => ({ ...prev, [orador.id]: 0 }));
+      // Salvar no painelAtivo
+      updateDoc(doc(db, "painelAtivo", "ativo"), {
+        bancoHoras: { ...bancoHoras, [orador.id]: 0 }
+      });
+    }
+  }
+
   function adicionarTempoExtra(idx) {
     if (tempoExtra > 0) {
       const lista = [...oradores];
@@ -187,17 +202,20 @@ export default function Votacao() {
     }
   }
 
-  // --- REGRA CERTA: saldo = tempo restante, nunca soma!
   async function encerrarFala() {
     if (oradorAtivoIdx < 0) return;
     setCronometroAtivo(false);
     const orador = oradores[oradorAtivoIdx];
+    // O saldo passa a ser o tempo restante daquela fala
     if (orador.id && !orador.externo) {
       setBancoHoras(prev => ({
         ...prev,
         [orador.id]: tempoRestante
       }));
-      await setDoc(doc(db, "bancoHoras", orador.id), { tempo: tempoRestante }, { merge: true });
+      // Salva saldo de horas imediatamente no painelAtivo
+      await updateDoc(doc(db, "painelAtivo", "ativo"), {
+        bancoHoras: { ...bancoHoras, [orador.id]: tempoRestante }
+      });
     }
     const lista = [...oradores];
     lista[oradorAtivoIdx].saldo = tempoRestante;
@@ -206,17 +224,6 @@ export default function Votacao() {
     setOradores(lista);
     setTempoRestante(0);
     setResumoFala("");
-    try {
-      await updateDoc(doc(db, "painelAtivo", "ativo"), {
-        tribunaAtual: {
-          oradores: lista,
-          oradorAtivoIdx,
-          horarioEncerramento: new Date().toISOString(),
-        }
-      });
-    } catch (e) {
-      console.error("Erro ao salvar tribuna no painelAtivo:", e);
-    }
   }
 
   function iniciarFala() {
@@ -240,23 +247,28 @@ export default function Votacao() {
     lista[idx].tempoFala = parseInt(valor) || tempoPadrao;
     setOradores(lista);
   }
-  function usarSaldoHoras(idx) {
-    const orador = oradores[idx];
-    const saldo = bancoHoras[orador.id] || 0;
-    if (saldo > 0) {
-      const lista = [...oradores];
-      lista[idx].tempoFala = saldo;
-      setOradores(lista);
-      setBancoHoras(prev => ({ ...prev, [orador.id]: 0 }));
-      setDoc(doc(db, "bancoHoras", orador.id), { tempo: 0 }, { merge: true });
-    }
-  }
   function zerarSaldos() {
     setBancoHoras({});
     setOradores(oradores.map(o => ({ ...o, saldo: 0 })));
+    // Limpa painelAtivo também
+    updateDoc(doc(db, "painelAtivo", "ativo"), { bancoHoras: {} });
   }
 
-  // --------- CONTROLE DE SESSÃO/VOTAÇÃO ---------
+  // -------------- ZERAR PAINEL ATIVO ------------------
+  async function zerarPainelAtivo() {
+    await setDoc(doc(db, "painelAtivo", "ativo"), {
+      statusSessao: "",
+      dataHoraInicio: "",
+      ordemDoDia: [],
+      votacaoAtual: {},
+      tribunaAtual: {},
+      habilitados: [],
+      ataCompleta: "",
+      bancoHoras: {},
+    }, { merge: false });
+  }
+
+  // --------------- CONTROLE DE SESSÃO/VOTAÇÃO ---------------
   const alterarStatusSessao = async (novoStatus) => {
     if (!sessaoAtiva) return;
     const sessaoRef = doc(db, "sessoes", sessaoAtiva.id);
@@ -287,6 +299,7 @@ export default function Votacao() {
     for (let id of Object.keys(bancoHoras)) {
       await setDoc(doc(db, "bancoHoras", id), { tempo: 0 }, { merge: true });
     }
+    await zerarPainelAtivo();
   };
 
   function moverMateria(idx, direcao) {
@@ -435,7 +448,6 @@ export default function Votacao() {
   }
 
   function gerarTextoPadraoAta() {
-    // Texto padrão com dados da sessão
     const topo = panelConfig?.nomeCamara || "Câmara Municipal";
     const cidade = panelConfig?.cidade || "";
     const dataSessao = sessaoAtiva?.data || new Date().toLocaleDateString();
@@ -460,6 +472,8 @@ export default function Votacao() {
   }
 
   // ----------- RENDER DE ABAS -----------
+  function renderConteudoAba() {
+     // ----------- RENDER DE ABAS -----------
   function renderConteudoAba() {
     switch (aba) {
       case "Controle de Sessão":
@@ -872,6 +886,7 @@ export default function Votacao() {
         return null;
     }
   }
+
 
   // ----------- RENDER PRINCIPAL -----------
   return (
