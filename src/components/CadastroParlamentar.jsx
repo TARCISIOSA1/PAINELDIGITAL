@@ -93,15 +93,28 @@ export default function CadastroParlamentar() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleUploadFoto = async () => {
+const handleUploadFoto = async () => {
+  try {
+    console.log("Tentando upload, fotoFile:", fotoFile);
     if (!fotoFile) return form.foto;
     const storageRef = ref(storage, `fotosParlamentares/${Date.now()}-${fotoFile.name}`);
-    await uploadBytes(storageRef, fotoFile);
-    return await getDownloadURL(storageRef);
-  };
+    const uploadResult = await uploadBytes(storageRef, fotoFile);
+    console.log("Upload feito:", uploadResult);
+    const url = await getDownloadURL(storageRef);
+    console.log("URL getDownloadURL:", url);
+    return url;
+  } catch (e) {
+    console.error("ERRO NO UPLOAD FOTO:", e);
+    alert("Erro ao fazer upload da foto: " + e.message);
+    return form.foto;
+  }
+};
 
-  const salvarParlamentar = async () => {
+const salvarParlamentar = async () => {
+  try {
+    console.log("Iniciando SALVAR PARLAMENTAR", { fotoFile, form });
     const urlFoto = await handleUploadFoto();
+    console.log("URL da foto gerada/uploadada:", urlFoto);
     const dados = { ...form, foto: urlFoto };
 
     if (!usuarioSelecionado || !dados.uid) {
@@ -114,7 +127,6 @@ export default function CadastroParlamentar() {
       alert("Parlamentar atualizado!");
       setEditandoId(null);
     } else {
-      // Salva o parlamentar com o MESMO ID do usuário!
       await setDoc(doc(db, "parlamentares", usuarioSelecionado), dados);
       alert("Parlamentar salvo!");
     }
@@ -138,7 +150,12 @@ export default function CadastroParlamentar() {
     setUsuarioSelecionado("");
     carregarParlamentares();
     setPagina(0);
-  };
+  } catch (e) {
+    console.error("ERRO AO SALVAR:", e);
+    alert("Erro ao salvar parlamentar: " + e.message);
+  }
+};
+
 
   const excluirParlamentar = async (id) => {
     if (window.confirm("Deseja realmente excluir este parlamentar?")) {
