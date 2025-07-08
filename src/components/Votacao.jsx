@@ -1,12 +1,12 @@
 // Votacao.jsx
 import React, { useEffect, useState, useRef } from "react";
 import {
-  collection, getDocs, doc, updateDoc, setDoc, addDoc
+  collection, getDocs, doc, updateDoc, setDoc, addDoc, getDoc
 } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
 import { FaArrowUp, FaArrowDown } from "react-icons/fa";
-import "./Votacao.css";
+import "./Votacao.css"; // <- Remova o "s"!
 import panelConfig from "../config/panelConfig.json";
 
 const QUORUM_OPTIONS = [
@@ -89,6 +89,7 @@ export default function Votacao() {
 
   // ------------------- LOAD DADOS -------------------
 const carregarSessaoAtivaOuPrevista = async () => {
+  // Busca sessões
   const snapshot = await getDocs(collection(db, "sessoes"));
   const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   let sessao = lista.find((s) => s.status === "Ativa");
@@ -97,23 +98,22 @@ const carregarSessaoAtivaOuPrevista = async () => {
       (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
     );
   }
+
   if (sessao) {
     setSessaoAtiva(sessao);
     setMaterias(sessao.ordemDoDia || []);
     setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
     
-    // --- AQUI VEM A MÁGICA ---
-    // Busca habilitados do painelAtivo/ativo, se existir
-    const painelAtivoRef = doc(db, "painelAtivo", "ativo");
-    const painelSnap = await getDocs(collection(db, "painelAtivo"));
+    // --- BUSCA HABILITADOS do painelAtivo/ativo ---
     let habilitadosPainel = [];
     try {
-      const painel = await (await painelAtivoRef.get()).data();
-      if (painel && painel.habilitados) {
-        habilitadosPainel = painel.habilitados;
+      const painelAtivoSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
+      const painelData = painelAtivoSnap.exists() ? painelAtivoSnap.data() : {};
+      if (painelData && Array.isArray(painelData.habilitados)) {
+        habilitadosPainel = painelData.habilitados;
       }
     } catch {}
-    // Fallback: se não tem no painelAtivo, usa da sessão
+    // Fallback: se não tem em painelAtivo, pega da sessão
     if (habilitadosPainel.length > 0) {
       setHabilitados(habilitadosPainel);
     } else {
@@ -123,33 +123,32 @@ const carregarSessaoAtivaOuPrevista = async () => {
           : []
       );
     }
-    // ...continua resto igual
 
-      setTipoVotacao(sessao.tipoVotacao || "Simples");
-      setModalidade(sessao.modalidade || "Unica");
-      setTempoVotacao(sessao.tempoVotacao || "");
-      if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
-        setOradores(sessao.tribuna.map(o => ({
-          ...o,
-          saldo: 0,
-          fala: o.fala || "",
-          horario: "",
-        })));
-      } else {
-        setOradores([]);
-      }
+    setTipoVotacao(sessao.tipoVotacao || "Simples");
+    setModalidade(sessao.modalidade || "Unica");
+    setTempoVotacao(sessao.tempoVotacao || "");
+    if (Array.isArray(sessao.tribuna) && sessao.tribuna.length > 0) {
+      setOradores(sessao.tribuna.map(o => ({
+        ...o,
+        saldo: 0,
+        fala: o.fala || "",
+        horario: "",
+      })));
     } else {
-      setSessaoAtiva(null);
-      setMaterias([]);
-      setMateriasSelecionadas([]);
-      setHabilitados([]);
-      setTipoVotacao("Simples");
-      setModalidade("Unica");
-      setTempoVotacao("");
-      setStatusVotacao("Preparando");
       setOradores([]);
     }
-  };
+  } else {
+    setSessaoAtiva(null);
+    setMaterias([]);
+    setMateriasSelecionadas([]);
+    setHabilitados([]);
+    setTipoVotacao("Simples");
+    setModalidade("Unica");
+    setTempoVotacao("");
+    setStatusVotacao("Preparando");
+    setOradores([]);
+  }
+};
 
   const carregarVereadores = async () => {
     const snap = await getDocs(collection(db, "parlamentares"));
