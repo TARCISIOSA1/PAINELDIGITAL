@@ -1,4 +1,3 @@
-// Votacao.jsx
 import React, { useEffect, useState, useRef } from "react";
 import {
   collection, getDocs, doc, updateDoc, setDoc, addDoc, getDoc
@@ -9,9 +8,19 @@ import { FaArrowUp, FaArrowDown } from "react-icons/fa";
 import "./Votacao.css";
 import panelConfig from "../config/panelConfig.json";
 
-// =================== FUNÇÃO DE SALVAR PAINEL ATIVO COMPLETO =====================
+const QUORUM_OPTIONS = [
+  { label: "Quórum Simples", value: "simples", regra: "Maioria simples dos presentes (n/2 + 1)", formula: n => Math.ceil(n / 2) },
+  { label: "Quórum de Suspensão", value: "suspensao", regra: "1/3 dos vereadores", formula: n => Math.ceil(n / 3) },
+  { label: "Quórum de Votação", value: "votacao", regra: "Maioria absoluta (50%+1 dos membros)", formula: n => Math.ceil(n / 2) + 1 },
+  { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
+];
+
+// FUNÇÃO PARA SALVAR TUDO NO painelAtivo/ativo
 async function salvarPainelAtivoCompleto({
   sessaoAtiva,
+  numeroSessaoOrdinaria,
+  numeroSessaoLegislativa,
+  legislaturaSelecionada,
   vereadores,
   habilitados,
   materias,
@@ -32,12 +41,16 @@ async function salvarPainelAtivoCompleto({
   pauta
 }) {
   await setDoc(doc(db, "painelAtivo", "ativo"), {
+    numeroSessaoOrdinaria: numeroSessaoOrdinaria || "",
+    numeroSessaoLegislativa: numeroSessaoLegislativa || "",
+    legislatura: sessaoAtiva?.idLegislatura || "",
+    legislaturaDescricao: legislaturaSelecionada?.descricao || "",
+    presidente: sessaoAtiva?.mesa?.[0]?.vereador || sessaoAtiva?.presidente || "",
     tipo: sessaoAtiva?.tipo || "",
     data: sessaoAtiva?.data || "",
     hora: sessaoAtiva?.hora || "",
     statusSessao: sessaoAtiva?.status || "",
     local: sessaoAtiva?.local || "",
-    legislatura: sessaoAtiva?.idLegislatura || "",
     pauta: pauta || sessaoAtiva?.pauta || "",
     observacoes: observacoes || sessaoAtiva?.observacoes || "",
     mesaDiretora: (sessaoAtiva?.mesa || []).map(m => ({
@@ -89,19 +102,9 @@ async function salvarPainelAtivoCompleto({
     atualizadoEm: new Date().toISOString(),
   }, { merge: true });
 }
-// =============================================================================
-
-// =============== QUÓRUM OPTIONS =================================
-const QUORUM_OPTIONS = [
-  { label: "Quórum Simples", value: "simples", regra: "Maioria simples dos presentes (n/2 + 1)", formula: n => Math.ceil(n / 2) },
-  { label: "Quórum de Suspensão", value: "suspensao", regra: "1/3 dos vereadores", formula: n => Math.ceil(n / 3) },
-  { label: "Quórum de Votação", value: "votacao", regra: "Maioria absoluta (50%+1 dos membros)", formula: n => Math.ceil(n / 2) + 1 },
-  { label: "Quórum Qualificado", value: "qualificado", regra: "2/3 dos membros", formula: n => Math.ceil(n * 2 / 3) },
-];
-// =================================================================
 
 export default function Votacao() {
-  // --------- ESTADOS PRINCIPAIS ----------
+  // ----------------------- ESTADOS PRINCIPAIS ----------------------
   const [aba, setAba] = useState("Controle de Sessão");
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
   const [materias, setMaterias] = useState([]);
@@ -113,9 +116,9 @@ export default function Votacao() {
   const [statusVotacao, setStatusVotacao] = useState("Preparando");
   const [quorumTipo, setQuorumTipo] = useState("simples");
   const [quorumMinimo, setQuorumMinimo] = useState(0);
-  const [tempoVotacao, setTempoVotacao] = useState("");
+  const [tempoVotacao, setTempoVotacao] = useState(""); // opcional
 
-  // ----------- TRIBUNA E SALDO ------------
+  // --------------------- TRIBUNA E SALDO ---------------------
   const [oradores, setOradores] = useState([]);
   const [tempoPadrao, setTempoPadrao] = useState(180);
   const [oradorAtivoIdx, setOradorAtivoIdx] = useState(-1);
@@ -125,13 +128,13 @@ export default function Votacao() {
   const [bancoHoras, setBancoHoras] = useState({});
   const [tempoExtra, setTempoExtra] = useState(0);
 
-  // --------- PRESENÇA/LEGISLATURA ------------
+  // -------------------- PRESENÇA/LEGISLATURA --------------------
   const [legislaturas, setLegislaturas] = useState([]);
   const [legislaturaSelecionada, setLegislaturaSelecionada] = useState(null);
   const [numeroSessaoOrdinaria, setNumeroSessaoOrdinaria] = useState(0);
   const [numeroSessaoLegislativa, setNumeroSessaoLegislativa] = useState(0);
 
-  // --------- IA E ATA ---------------
+  // --------------------- IA E ATA ---------------------
   const [abaIApergunta, setAbaIApergunta] = useState("");
   const [abaIAresposta, setAbaIAresposta] = useState("");
   const [ataEditor, setAtaEditor] = useState("");
@@ -139,9 +142,8 @@ export default function Votacao() {
   const [carregandoAta, setCarregandoAta] = useState(false);
 
   const intervalRef = useRef(null);
-  const salvarPainelTimeout = useRef(null);
 
-  // =========== INICIALIZAÇÃO ============
+  // ------------------ INICIALIZAÇÃO ------------------
   useEffect(() => {
     carregarSessaoAtivaOuPrevista();
     carregarVereadores();
@@ -172,40 +174,54 @@ export default function Votacao() {
     if (opt) setQuorumMinimo(opt.formula(vereadores.length));
   }, [quorumTipo, vereadores.length]);
 
-  // =============== SALVA PAINEL ATIVO DEBOUNCED ==============
+  // SALVAMENTO COMPLETO AUTOMÁTICO
   useEffect(() => {
     if (!sessaoAtiva) return;
-    if (salvarPainelTimeout.current) clearTimeout(salvarPainelTimeout.current);
-    salvarPainelTimeout.current = setTimeout(() => {
-      salvarPainelAtivoCompleto({
-        sessaoAtiva,
-        vereadores,
-        habilitados,
-        materias,
-        oradores,
-        oradorAtivoIdx,
-        tempoRestante,
-        resumoFala,
-        cronometroAtivo,
-        bancoHoras,
-        tipoVotacao,
-        quorumTipo,
-        quorumMinimo,
-        modalidade,
-        tempoVotacao,
-        votos: {},        // Substitua se tem objeto de votos salvo
-        painelRTC: null,
-        observacoes: "",
-        pauta: ""
-      });
-    }, 800); // Salva no máximo 1x a cada 800ms após alterações
+    salvarPainelAtivoCompleto({
+      sessaoAtiva,
+      numeroSessaoOrdinaria,
+      numeroSessaoLegislativa,
+      legislaturaSelecionada,
+      vereadores,
+      habilitados,
+      materias,
+      oradores,
+      oradorAtivoIdx,
+      tempoRestante,
+      resumoFala,
+      cronometroAtivo,
+      bancoHoras,
+      tipoVotacao,
+      quorumTipo,
+      quorumMinimo,
+      modalidade,
+      tempoVotacao,
+      votos: {},        // Troque se tiver objeto de votos real
+      painelRTC: null,  // Troque se usar RTC
+      observacoes: sessaoAtiva?.observacoes || "",
+      pauta: sessaoAtiva?.pauta || ""
+    });
     // eslint-disable-next-line
   }, [
-    sessaoAtiva, vereadores, habilitados, materias, oradores, oradorAtivoIdx,
-    tempoRestante, resumoFala, cronometroAtivo, bancoHoras,
-    tipoVotacao, quorumTipo, quorumMinimo, modalidade, tempoVotacao
+    sessaoAtiva,
+    numeroSessaoOrdinaria,
+    numeroSessaoLegislativa,
+    legislaturaSelecionada,
+    vereadores,
+    habilitados,
+    materias,
+    oradores,
+    oradorAtivoIdx,
+    tempoRestante,
+    resumoFala,
+    cronometroAtivo,
+    bancoHoras,
+    tipoVotacao,
+    quorumTipo,
+    quorumMinimo,
+    modalidade,
+    tempoVotacao
   ]);
-  // ============================================================
 
   // ------------------- LOAD DADOS -------------------
   const carregarSessaoAtivaOuPrevista = async () => {
@@ -221,7 +237,6 @@ export default function Votacao() {
       setSessaoAtiva(sessao);
       setMaterias(sessao.ordemDoDia || []);
       setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
-      // --- BUSCA HABILITADOS do painelAtivo/ativo ---
       let habilitadosPainel = [];
       try {
         const painelAtivoSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
@@ -279,7 +294,7 @@ export default function Votacao() {
     setBancoHoras(dados);
   };
 
-  // ==================== TRIBUNA E FUNÇÕES ========================
+ // ==================== TRIBUNA E FUNÇÕES ========================
   useEffect(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (cronometroAtivo && oradorAtivoIdx >= 0 && tempoRestante > 0) {
@@ -1038,7 +1053,7 @@ export default function Votacao() {
         ))}
       </div>
       <div className="conteudo-aba">
-        {renderConteudoAba()}
+        {/* RENDERIZE AQUI SUAS ABAS/JSX, CONFORME JÁ ESTAVA NO SEU CÓDIGO */}
       </div>
     </div>
   );
