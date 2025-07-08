@@ -122,7 +122,7 @@ const salvarParlamentar = async () => {
       return;
     }
 
-    f (editandoId) {
+   if (editandoId) {
   await setDoc(doc(db, "parlamentares", editandoId), dados, { merge: true });
   alert("Parlamentar salvo/atualizado!");
   setEditandoId(null);
@@ -130,6 +130,7 @@ const salvarParlamentar = async () => {
   await setDoc(doc(db, "parlamentares", usuarioSelecionado), dados, { merge: true });
   alert("Parlamentar salvo!");
 }
+
 
     setForm({
       nome: "",
