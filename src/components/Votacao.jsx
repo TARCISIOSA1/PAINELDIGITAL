@@ -1053,7 +1053,7 @@ export default function Votacao() {
         ))}
       </div>
       <div className="conteudo-aba">
-        {/* RENDERIZE AQUI SUAS ABAS/JSX, CONFORME JÁ ESTAVA NO SEU CÓDIGO */}
+        {renderConteudoAba()}
       </div>
     </div>
   );
