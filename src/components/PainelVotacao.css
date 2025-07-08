@@ -2,11 +2,13 @@
   width: 100vw;
   min-height: 100vh;
   background: #fff;
-  padding: 2vw 2vw 4vw 2vw;
+  padding: 2vw;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 2vw;
+  max-width: 100vw;
+  overflow-x: hidden;
 }
 
 .sessao-info-presentes,
@@ -19,11 +21,20 @@
   padding: 2vw;
   margin-bottom: 2vw;
   flex: 1 1 300px;
+  min-width: 0;
+}
+
+.sessao-info-presentes {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2vw;
 }
 
 .info-gerais,
 .presentes-box {
-  margin-bottom: 12px;
+  min-width: 220px;
+  max-width: 60vw;
 }
 
 .presentes-box {
@@ -45,20 +56,20 @@
   border-radius: 12px;
   padding: 7px 16px 7px 7px;
   box-shadow: 0 1px 3px #0001;
+  min-width: 90px;
 }
 
 .tag-foto, .foto-orador-destaque {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   object-fit: cover;
   margin-right: 7px;
   border: 2px solid #ddd;
 }
-
 .tag-foto-placeholder, .foto-parlamentar-placeholder {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #b8cbe9;
   margin-right: 7px;
@@ -67,35 +78,47 @@
 .tag-nome {
   font-weight: bold;
   margin-right: 6px;
+  font-size: 0.98em;
 }
 
 .tag-partido {
   background: #1460a0;
   color: #fff;
-  font-size: 0.86em;
+  font-size: 0.83em;
   border-radius: 6px;
-  padding: 1px 8px;
+  padding: 1px 7px;
 }
 
 .mesa-diretora-bloco ul {
   display: flex;
   flex-wrap: wrap;
-  gap: 28px;
+  gap: 18px;
   list-style: none;
   padding-left: 0;
+  font-size: 1em;
 }
 
 .tribuna-topo {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
+}
+
+.foto-orador-destaque {
+  width: 44px;
+  height: 44px;
+}
+
+.info-orador {
+  font-size: 1em;
+  line-height: 1.1;
 }
 
 .timer-tribuna {
-  font-size: 1.2em;
+  font-size: 1.15em;
   background: #dfebfa;
   border-radius: 6px;
-  padding: 6px 18px;
+  padding: 6px 13px;
   margin-left: auto;
   font-weight: bold;
 }
@@ -113,7 +136,7 @@
 .overlay-legendas {
   margin: 10px 0 0 0;
   padding: 0;
-  font-size: 1.15em;
+  font-size: 1.08em;
 }
 .legenda-linha {
   margin: 0;
@@ -121,7 +144,7 @@
 }
 
 .fala-corrigida {
-  font-size: 1.01em;
+  font-size: 0.99em;
   margin: 6px 0 0 0;
 }
 
@@ -130,6 +153,7 @@
   border-radius: 12px;
   padding: 14px 20px;
   margin-bottom: 14px;
+  font-size: 0.97em;
 }
 
 .tabela-votos-central {
@@ -138,21 +162,22 @@
   border-radius: 7px;
   margin-top: 10px;
   box-shadow: 0 1px 2px #0001;
+  font-size: 0.98em;
+  table-layout: auto;
 }
 .tabela-votos-central th,
 .tabela-votos-central td {
-  padding: 8px 10px;
+  padding: 7px 7px;
   border-bottom: 1px solid #e3e3e3;
-  font-size: 1.01em;
 }
 .tabela-votos-central th { background: #d6e6f7; }
 
 .status-small {
   display: inline-block;
-  font-size: 0.98em;
+  font-size: 0.95em;
   font-weight: 600;
   border-radius: 5px;
-  padding: 2px 10px;
+  padding: 2px 8px;
   margin-right: 4px;
 }
 .status-ativa { background: #bff3bf; color: #14651a; }
@@ -176,6 +201,19 @@
   background: #e0eefe;
 }
 
+.resultado-final {
+  margin-top: 7px;
+  font-weight: 600;
+  font-size: 1em;
+}
+
+.painel-grafico {
+  margin-top: 12px;
+  background: #f7fafd;
+  border-radius: 12px;
+  padding: 8px;
+}
+
 @media (max-width: 900px) {
   .painel-ia-container {
     padding: 1vw 0.5vw;
@@ -186,27 +224,80 @@
   .bloco-votacao-central,
   .mesa-diretora-bloco {
     padding: 4vw 2vw;
-    margin-bottom: 3vw;
+    margin-bottom: 2vw;
+  }
+  .presentes-box {
+    max-width: 100vw;
+  }
+  .info-gerais {
+    max-width: 100vw;
   }
 }
 
 @media (max-width: 600px) {
   .painel-ia-container {
-    padding: 0;
+    padding: 0 2vw;
     gap: 0.5vw;
   }
   .sessao-info-presentes,
   .bloco-tribuna-central,
   .bloco-votacao-central,
   .mesa-diretora-bloco {
-    padding: 6vw 2vw;
-    margin-bottom: 6vw;
+    padding: 4vw 1vw;
+    margin-bottom: 4vw;
   }
-  .info-gerais, .presentes-box {
-    flex-direction: column !important;
-    align-items: flex-start !important;
+  .sessao-info-presentes {
+    flex-direction: column;
+    gap: 2vw;
   }
-  .presentes-box {
-    width: 100%;
+  .tags-presentes {
+    gap: 7px;
+  }
+  .tag-present {
+    font-size: 0.95em;
+    padding: 6px 8px 6px 6px;
+  }
+  .foto-orador-destaque,
+  .tag-foto,
+  .tag-foto-placeholder {
+    width: 26px;
+    height: 26px;
+  }
+  .tribuna-topo {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+  }
+  .mesa-diretora-bloco ul {
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.96em;
+  }
+  .bloco-votacao-central,
+  .bloco-tribuna-central,
+  .mesa-diretora-bloco {
+    font-size: 0.97em;
+  }
+  .tabela-votos-central th,
+  .tabela-votos-central td {
+    font-size: 0.95em;
+    padding: 6px 3px;
+  }
+  .painel-grafico {
+    padding: 2px;
+  }
+}
+
+@media (max-width: 430px) {
+  .painel-ia-container {
+    padding: 0 1vw;
+    gap: 0.3vw;
+  }
+  .sessao-info-presentes,
+  .bloco-tribuna-central,
+  .bloco-votacao-central,
+  .mesa-diretora-bloco {
+    padding: 2vw 0.5vw;
+    margin-bottom: 2vw;
   }
 }
