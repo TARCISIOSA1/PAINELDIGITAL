@@ -88,24 +88,43 @@ export default function Votacao() {
   }, [quorumTipo, vereadores.length]);
 
   // ------------------- LOAD DADOS -------------------
-  const carregarSessaoAtivaOuPrevista = async () => {
-    const snapshot = await getDocs(collection(db, "sessoes"));
-    const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    let sessao = lista.find((s) => s.status === "Ativa");
-    if (!sessao) {
-      sessao = lista.find(
-        (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
-      );
-    }
-    if (sessao) {
-      setSessaoAtiva(sessao);
-      setMaterias(sessao.ordemDoDia || []);
-      setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+const carregarSessaoAtivaOuPrevista = async () => {
+  const snapshot = await getDocs(collection(db, "sessoes"));
+  const lista = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  let sessao = lista.find((s) => s.status === "Ativa");
+  if (!sessao) {
+    sessao = lista.find(
+      (s) => s.status === "Prevista" || s.status === "Suspensa" || s.status === "Pausada"
+    );
+  }
+  if (sessao) {
+    setSessaoAtiva(sessao);
+    setMaterias(sessao.ordemDoDia || []);
+    setMateriasSelecionadas(sessao.ordemDoDia?.filter(m => m.status !== "votada").map(m => m.id) || []);
+    
+    // --- AQUI VEM A MÁGICA ---
+    // Busca habilitados do painelAtivo/ativo, se existir
+    const painelAtivoRef = doc(db, "painelAtivo", "ativo");
+    const painelSnap = await getDocs(collection(db, "painelAtivo"));
+    let habilitadosPainel = [];
+    try {
+      const painel = await (await painelAtivoRef.get()).data();
+      if (painel && painel.habilitados) {
+        habilitadosPainel = painel.habilitados;
+      }
+    } catch {}
+    // Fallback: se não tem no painelAtivo, usa da sessão
+    if (habilitadosPainel.length > 0) {
+      setHabilitados(habilitadosPainel);
+    } else {
       setHabilitados(
         Array.isArray(sessao.presentes)
           ? sessao.presentes.map((p) => (p.id ? p.id : p))
           : []
       );
+    }
+    // ...continua resto igual
+
       setTipoVotacao(sessao.tipoVotacao || "Simples");
       setModalidade(sessao.modalidade || "Unica");
       setTempoVotacao(sessao.tempoVotacao || "");
