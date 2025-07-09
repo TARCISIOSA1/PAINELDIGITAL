@@ -32,6 +32,7 @@ export default function PainelVotacaoIA() {
   const [presentes, setPresentes] = useState([]);
   const [votos, setVotos] = useState([]);
   const [width, setWidth] = useState(window.innerWidth);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth);
@@ -57,6 +58,28 @@ export default function PainelVotacaoIA() {
       );
     });
     return () => unsubscribe();
+  }, []);
+
+  // Controle de fullscreen: detecta se está em tela cheia
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(!!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      ));
+    }
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", onFullscreenChange);
+    document.addEventListener("mozfullscreenchange", onFullscreenChange);
+    document.addEventListener("MSFullscreenChange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
+      document.removeEventListener("mozfullscreenchange", onFullscreenChange);
+      document.removeEventListener("MSFullscreenChange", onFullscreenChange);
+    };
   }, []);
 
   // Botão: Fullscreen
@@ -99,10 +122,12 @@ export default function PainelVotacaoIA() {
             {dados.tribunaAtual.legenda || <span style={{color:"#ccc"}}>Legenda não disponível</span>}
           </div>
         </div>
-        <div className={styles.fixedBtns}>
-          <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
-          <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
-        </div>
+        {!isFullscreen && (
+          <div className={styles.fixedBtns}>
+            <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
+            <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -127,10 +152,12 @@ export default function PainelVotacaoIA() {
           <h2>Votação em Andamento</h2>
           <Bar data={chartData} options={{responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}}} />
         </div>
-        <div className={styles.fixedBtns}>
-          <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
-          <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
-        </div>
+        {!isFullscreen && (
+          <div className={styles.fixedBtns}>
+            <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
+            <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
+          </div>
+        )}
       </div>
     );
   }
@@ -152,9 +179,16 @@ export default function PainelVotacaoIA() {
       <TopoInstitucional className={styles.topo} />
 
       <div className={styles.painelFlexMain}>
+        {/* Bloco de informações da sessão */}
         <div className={styles.painelBlocoInfo}>
           <div><b>Data:</b> {dados?.data || "-"} <b>Hora:</b> {dados?.hora || "-"}</div>
           <div><b>Local:</b> {dados?.local || "-"}</div>
+          <div>
+            <b>Legislatura:</b> {dados?.legislatura || "—"}
+          </div>
+          <div>
+            <b>Sessão Legislativa:</b> {dados?.sessaoLegislativa || "—"}
+          </div>
           <div>
             <b>Status:</b>{" "}
             <span className={`status-tag status-${(dados?.statusSessao || "").toLowerCase()}`}>{dados?.statusSessao || "-"}</span>
@@ -170,11 +204,33 @@ export default function PainelVotacaoIA() {
           </div>
         </div>
 
+        {/* Bloco de Ordem do Dia, logo após informações da sessão */}
+        <div className={styles.painelBlocoOrdem}>
+          <h3>Ordem do Dia</h3>
+          <div className={styles.ordemdiaLista}>
+            {(dados?.ordemDoDia || []).length === 0
+              ? <span style={{opacity:.7}}>Nenhuma matéria na pauta</span>
+              : (dados?.ordemDoDia || []).map((mat, idx) => (
+              <div key={mat.id || idx}
+                className={styles.ordemItem}
+                data-status={mat.status === "Aprovada" ? "aprovada"
+                  : mat.status === "Rejeitada" ? "rejeitada"
+                  : mat.status === "Sem Quórum" ? "semquorum" : ""}
+              >
+                <b>{mat.tipo === "materia" ? "Matéria" : "Ata"}:</b> {mat.titulo || "-"}<br />
+                <b>Status:</b> {mat.status || "-"}<br />
+                <b>Autor:</b> {mat.autor || "-"}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Bloco de habilitados bem expandido */}
         <div className={styles.painelBlocoPresentes}>
-          <h3>Habilitados</h3>
+          <h3>Parlamentares Habilitados</h3>
           <div className={styles.presentesLista}>
             {(presentes.length === 0 ? <span style={{opacity:.7}}>Nenhum habilitado</span> :
-              presentes.slice(0, width > 600 ? 6 : 3).map(p => (
+              presentes.map(p => (
                 <div className={styles.parlamentarMini} key={p.id}>
                   <img src={p.foto || "/assets/default-parlamentar.png"} alt={p.nome} />
                   <span className={styles.miniNome}>{p.nome}</span>
@@ -185,6 +241,7 @@ export default function PainelVotacaoIA() {
           </div>
         </div>
 
+        {/* Bloco da tribuna */}
         <div className={styles.painelBlocoTribuna}>
           <h3>Tribuna</h3>
           {dados?.tribunaAtual?.oradores?.length > 0 ? (
@@ -214,24 +271,7 @@ export default function PainelVotacaoIA() {
           )}
         </div>
 
-        <div className={styles.painelBlocoOrdem}>
-          <h3>Ordem do Dia</h3>
-          <div className={styles.ordemdiaLista}>
-            {(dados?.ordemDoDia || []).slice(0, width > 600 ? 3 : 2).map((mat, idx) => (
-              <div key={mat.id || idx}
-                className={styles.ordemItem}
-                data-status={mat.status === "Aprovada" ? "aprovada"
-                  : mat.status === "Rejeitada" ? "rejeitada"
-                  : mat.status === "Sem Quórum" ? "semquorum" : ""}
-              >
-                <b>{mat.tipo === "materia" ? "Matéria" : "Ata"}:</b> {mat.titulo || "-"}<br />
-                <b>Status:</b> {mat.status || "-"}<br />
-                <b>Autor:</b> {mat.autor || "-"}
-              </div>
-            ))}
-          </div>
-        </div>
-
+        {/* Bloco da votação */}
         <div className={styles.painelBlocoVotacao}>
           <h3>Votação</h3>
           <div className={styles.votacaoTabelaGrafico}>
@@ -240,7 +280,7 @@ export default function PainelVotacaoIA() {
                 <tr><th>Vereador</th><th>Voto</th></tr>
               </thead>
               <tbody>
-                {presentes.slice(0, width > 600 ? 6 : 3).map(parl => {
+                {presentes.map(parl => {
                   const voto = votos.find(v => v.id === parl.id);
                   return (
                     <tr key={parl.id}>
@@ -292,12 +332,12 @@ export default function PainelVotacaoIA() {
 
       <Letreiro texto={dados?.ata || dados?.ataCompleta || ""} />
 
-      {/* Botões fixos de tela auxiliar e fullscreen */}
-      <div className={styles.fixedBtns}>
-        <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
-        <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
-      </div>
-
+      {!isFullscreen && (
+        <div className={styles.fixedBtns}>
+          <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
+          <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
+        </div>
+      )}
     </div>
   );
 }
