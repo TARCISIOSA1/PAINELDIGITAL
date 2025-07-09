@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef } from "react";
+import TopoInstitucional from "./TopoInstitucional";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
-import TopoInstitucional from "./TopoInstitucional";
 import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -16,257 +16,283 @@ import "./PainelVotacaoIA.css";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
+function Letreiro({ texto }) {
+  if (!texto) return null;
+  return (
+    <div className="letreiro-marquee">
+      <span>{texto}</span>
+    </div>
+  );
+}
+
+function BannerBoasVindas({ frase }) {
+  return (
+    <div className="banner-boasvindas">
+      <h1>{frase || "Bem-vindos à Sessão Plenária"}</h1>
+    </div>
+  );
+}
+
 export default function PainelVotacaoIA() {
   const [dados, setDados] = useState(null);
-  const [legenda, setLegenda] = useState("");
+  const [habilitados, setHabilitados] = useState([]);
+  const [presentes, setPresentes] = useState([]);
+  const [votos, setVotos] = useState([]);
   const [fullTribuna, setFullTribuna] = useState(false);
   const [fullVotacao, setFullVotacao] = useState(false);
-  const [showNoticia, setShowNoticia] = useState(false);
-  const [msgIA, setMsgIA] = useState("Aguarde o início da sessão...");
-  const marqueeRef = useRef();
+  const containerRef = useRef(null);
 
-  // Carregar dados do painelAtivo/ativo
+  // Painel ativo Firestore
   useEffect(() => {
-    const unsub = onSnapshot(doc(db, "painelAtivo", "ativo"), (snap) => {
-      const data = snap.data();
+    const unsubscribe = onSnapshot(doc(db, "painelAtivo", "ativo"), (docSnap) => {
+      const data = docSnap.data();
       setDados(data);
 
-      // Fullscreen automático tribuna
-      if (data?.tribunaAtual?.cronometroAtivo && data?.tribunaAtual?.oradorAtivoIdx >= 0) {
-        setFullTribuna(true);
-      } else {
-        setFullTribuna(false);
-      }
+      // Habilitados (para votar)
+      setHabilitados(data?.habilitados || []);
 
-      // Fullscreen automático votação
-      if (data?.votacaoAtual?.status === "Em votação" || data?.votacaoAtual?.status === "Em Votação") {
-        setFullVotacao(true);
-      } else {
-        setFullVotacao(false);
-      }
+      // Presentes (dados completos)
+      setPresentes(data?.parlamentares?.filter(p =>
+        (data?.habilitados || []).includes(p.id)
+      ) || []);
 
-      // Mensagem IA pós-sessão
-      if (data?.statusSessao === "Encerrada") {
-        setShowNoticia(true);
-        setMsgIA("Sessão Encerrada! Veja as principais informações abaixo.");
-      } else {
-        setShowNoticia(false);
-        setMsgIA("");
-      }
-
-      // Puxa legenda salva no painelAtivo
-      setLegenda(data?.tribunaAtual?.conversas || "");
+      // Votos
+      const votosObj = data?.votacaoAtual?.votos || {};
+      setVotos(
+        Object.keys(votosObj).map((vid) => ({
+          id: vid,
+          voto: votosObj[vid]?.voto || "",
+        }))
+      );
     });
-    return unsub;
+    return () => unsubscribe();
   }, []);
 
-  // Dados básicos
-  const {
-    data: dataSessao,
-    hora,
-    local,
-    tipo,
-    numeroSessaoLegislativa,
-    numeroSessaoOrdinaria,
-    mesaDiretora = [],
-    parlamentares = [],
-    habilitados = [],
-    ordemDoDia = [],
-    statusSessao,
-    tribunaAtual = {},
-    votacaoAtual = {},
-    quorumMinimo,
-  } = dados || {};
+  // --- FULL TRIBUNA / VOTAÇÃO ---
+  useEffect(() => {
+    if (dados?.tribunaAtual?.cronometroAtivo && dados?.tribunaAtual?.oradorAtivoIdx >= 0) setFullTribuna(true);
+    else setFullTribuna(false);
 
-  // Mesa diretora formatada
-  const mesaDir = ["Presidente", "Vice-Presidente", "Secretário"].map(cargo => {
-    const membro = mesaDiretora.find(m => (m.cargo || "").toLowerCase() === cargo.toLowerCase());
-    return membro ? `${cargo}: ${membro.nome}` : null;
-  }).filter(Boolean);
+    if (dados?.votacaoAtual?.status === "Em votação") setFullVotacao(true);
+    else setFullVotacao(false);
+  }, [dados]);
 
-  // Parlamentares habilitados para votar (só aparece na lista de habilitados)
-  const parlHabilitados = parlamentares.filter(p => habilitados.includes(p.id));
-  const quorumAtingido = parlHabilitados.length >= (quorumMinimo || 0);
+  // --- DADOS PRINCIPAIS
+  if (!dados) {
+    return <div className="painel-ia-aguardando">Aguardando início da sessão...</div>;
+  }
 
-  // Bloco gráfico votação
-  const resultado = votacaoAtual?.votos || {};
-  const votoArr = Object.values(resultado);
-  const totalSim = votoArr.filter(v => v.voto === "sim" || v.voto === "Sim").length;
-  const totalNao = votoArr.filter(v => v.voto === "nao" || v.voto === "Não").length;
-  const totalAbst = votoArr.filter(v => v.voto === "abstencao" || v.voto === "Abstenção").length;
-
-  const dataGrafico = {
-    labels: ["Sim", "Não", "Abstenção"],
-    datasets: [
-      {
-        label: "Votos",
-        data: [totalSim, totalNao, totalAbst],
-        backgroundColor: ["#16a34a", "#ef4444", "#fbbf24"],
-        borderRadius: 8,
-      },
-    ],
-  };
-
-  // Fullscreen tribuna
-  if (fullTribuna && tribunaAtual && tribunaAtual.oradorAtivoIdx >= 0 && tribunaAtual.oradores?.length > 0) {
-    const orador = tribunaAtual.oradores[tribunaAtual.oradorAtivoIdx] || {};
+  // ---- FULL TRIBUNA (quando ativo) ----
+  if (fullTribuna && dados.tribunaAtual?.oradores?.length > 0) {
+    const idx = dados.tribunaAtual.oradorAtivoIdx;
+    const orador = dados.tribunaAtual.oradores[idx];
     return (
-      <div className="painel-fullscreen painel-fullscreen-tribuna">
+      <div className="painel-ia-fullscreen" ref={containerRef}>
         <TopoInstitucional />
         <div className="tribuna-full">
           <img
-            src={parlamentares.find(p => p.id === orador.id)?.foto || "/assets/default-parlamentar.png"}
+            src={orador.foto || "/assets/default-parlamentar.png"}
             alt={orador.nome}
-            className="tribuna-foto-full"
+            className="foto-orador-full"
           />
-          <div className="tribuna-info-full">
-            <div className="tribuna-nome-full">{orador.nome} <span className="tribuna-partido-full">({orador.partido || "--"})</span></div>
-            <div className="tribuna-tempo-full">{tribunaAtual.tempoRestante || orador.tempoFala || "--"}s</div>
-            <div className="tribuna-legenda-full">
-              {legenda ? <span>{legenda}</span> : <span style={{ color: "#888" }}>Legenda aguardando IA...</span>}
-            </div>
+          <div className="tribuna-full-info">
+            <div className="tribuna-full-nome">{orador.nome}</div>
+            <div className="tribuna-full-partido">{orador.partido}</div>
+            <div className="tribuna-full-ordem">Ordem #{idx + 1}</div>
           </div>
+          <div className="tribuna-full-tempo">
+            {dados.tribunaAtual.tempoRestante}s
+          </div>
+        </div>
+        {/* Legenda IA */}
+        <div className="legenda-tribuna-full">
+          {dados.tribunaAtual.legenda || <span style={{color:"#ccc"}}>Legenda não disponível</span>}
         </div>
       </div>
     );
   }
 
-  // Fullscreen votação
+  // ---- FULL VOTAÇÃO (quando ativo) ----
   if (fullVotacao) {
+    // Grafico
+    const resultado = dados.votacaoAtual?.resultado || {};
+    const chartData = {
+      labels: ["Sim", "Não", "Abstenção"],
+      datasets: [
+        {
+          label: "Votos",
+          data: [
+            resultado.sim || 0,
+            resultado.nao || 0,
+            resultado.abstencao || 0,
+          ],
+        },
+      ],
+    };
     return (
-      <div className="painel-fullscreen painel-fullscreen-votacao">
+      <div className="painel-ia-fullscreen" ref={containerRef}>
         <TopoInstitucional />
         <div className="votacao-full">
           <h2>Votação em Andamento</h2>
-          <Bar data={dataGrafico} />
-          <div className="votacao-resumo-full">
-            <span>✅ Sim: {totalSim}</span>
-            <span>❌ Não: {totalNao}</span>
-            <span>⚪ Abst: {totalAbst}</span>
-          </div>
+          <Bar data={chartData} />
         </div>
       </div>
     );
   }
 
-  // Banner de mensagem IA e letreiro
-  const noticiaFinal = (
-    <div className="banner-ia-final">
-      <div className="banner-frase">{msgIA}</div>
-      <div className="marquee">
-        <span ref={marqueeRef}>
-          {`Sessão: ${dataSessao || "--"} | Quórum: ${parlHabilitados.length} habilitados. ${ordemDoDia.map(o => `Pauta: ${o.titulo || o.tipo}`).join(" | ")}.`}
-        </span>
+  // --- BANNER NOTÍCIAS APÓS ENCERRAR ---
+  if (dados.statusSessao === "Encerrada") {
+    return (
+      <div className="painel-ia-encerrada">
+        <TopoInstitucional />
+        <BannerBoasVindas frase="Sessão encerrada! Fique atento às notícias e novidades." />
+        <Letreiro texto={dados.ataCompleta || dados.ata || "Aguarde informações."} />
       </div>
-    </div>
-  );
+    );
+  }
 
-  // Painel normal
+  // --- LAYOUT NORMAL ---
   return (
-    <div className="painel-ia-container">
+    <div className="painel-ia-container" ref={containerRef}>
       <TopoInstitucional />
-      <div className="painel-cabecalho">
-        <div>
-          <h2>
-            {numeroSessaoLegislativa && numeroSessaoOrdinaria
-              ? `${numeroSessaoLegislativa}ª Legislatura - ${numeroSessaoOrdinaria}ª Sessão`
-              : "Sessão Plenária"
-            }
-          </h2>
-          <span className={`status-sessao ${statusSessao === "Ativa" ? "ativa" : "encerrada"}`}>{statusSessao || "--"}</span>
+
+      {/* Cabeçalho Sessão + Mesa */}
+      <div className="painel-ia-header">
+        <div className="sessao-info">
+          <div>
+            <strong>Data:</strong> {dados.data || "-"} <strong>Hora:</strong> {dados.hora || "-"}
+          </div>
+          <div><strong>Local:</strong> {dados.local || "-"}</div>
+          <div>
+            <strong>Status:</strong>{" "}
+            <span className={`status-tag status-${(dados.statusSessao || "").toLowerCase()}`}>{dados.statusSessao || "-"}</span>
+            {" | "}
+            <strong>Tipo:</strong> {dados.tipo || "-"}
+          </div>
         </div>
-        <div>
-          <span>{dataSessao} {hora} - {local}</span>
+        <div className="mesa-diretora">
+          <div><strong>Presidente:</strong> {dados.mesaDiretora?.find(x=>x.cargo==="Presidente")?.nome || "-"}</div>
+          <div><strong>Vice:</strong> {dados.mesaDiretora?.find(x=>x.cargo==="Vice-Presidente")?.nome || "-"}</div>
+          <div><strong>Secretário:</strong> {dados.mesaDiretora?.find(x=>x.cargo==="Secretário")?.nome || "-"}</div>
         </div>
       </div>
-      <div className="painel-mesa-parl">
-        <div className="painel-mesa">
-          <b>Mesa Diretora</b>
-          <ul>
-            {mesaDir.map((m, i) => <li key={i}>{m}</li>)}
-          </ul>
-        </div>
-        <div className="painel-parlamentares">
-          <b>Parlamentares Habilitados</b>
-          <div className="painel-parl-lista">
-            {parlHabilitados.map(p => (
-              <div key={p.id} className="parl-tag">
-                <img src={p.foto} alt={p.nome} className="parl-foto" />
-                <span className="parl-nome">{p.nome}</span>
-                <span className="parl-partido">{p.partido}</span>
+
+      {/* Parlamentares Habilitados */}
+      <div className="parlamentares-habilitados">
+        <h3>Parlamentares Presentes/Habilitados</h3>
+        <div className="parlamentares-lista">
+          {presentes.length === 0 ? "Nenhum habilitado." :
+            presentes.map(p => (
+              <div className="parlamentar-tag" key={p.id}>
+                <img src={p.foto || "/assets/default-parlamentar.png"} alt={p.nome} />
+                <span className="nome">{p.nome}</span>
+                <span className="partido">{p.partido}</span>
               </div>
-            ))}
-          </div>
-          <div className={`quorum-info${quorumAtingido ? "" : " quorum-alert"}`}>
-            Quórum: {parlHabilitados.length}/{quorumMinimo || "--"}
-          </div>
+            ))
+          }
         </div>
       </div>
-      <div className="painel-ordem-tribuna">
-        <div className="painel-ordem-dia">
-          <b>Ordem do Dia</b>
-          {ordemDoDia.map((o, i) => (
-            <div key={i} className="ordem-item">
-              <div>{o.tipo === "materia" ? "Matéria" : "Ata"}: <b>{o.titulo || "--"}</b></div>
-              <div>Status: {o.status || "--"} | Autor: {o.autor || "--"}</div>
+
+      {/* Tribuna */}
+      <section className="bloco-tribuna-central">
+        <h3>Tribuna</h3>
+        {dados.tribunaAtual?.oradores?.length > 0 ? (
+          <div className="lista-oradores">
+            {dados.tribunaAtual.oradores.map((orador, idx) => {
+              const oradorAtivo = dados.tribunaAtual.oradorAtivoIdx === idx;
+              return (
+                <div
+                  key={orador.id}
+                  className={`orador-linha ${oradorAtivo ? "orador-ativo" : ""}`}
+                >
+                  <img src={orador.foto || "/assets/default-parlamentar.png"} alt={orador.nome} />
+                  <span className="orador-nome">{orador.nome}</span>
+                  <span className="partido">{orador.partido}</span>
+                  <span className="orador-tempo">{orador.tempoFala}s</span>
+                  {oradorAtivo && (
+                    <>
+                      <span className="orador-ativo-destaque">FALANDO AGORA</span>
+                      <span className="tribuna-cronometro">{dados.tribunaAtual.tempoRestante || 0}s</span>
+                      <div className="legenda-ia">
+                        {dados.tribunaAtual.legenda || <span style={{color:"#888"}}>Legenda não disponível</span>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p>Nenhum orador na tribuna.</p>
+        )}
+      </section>
+
+      {/* Ordem do Dia */}
+      <section className="bloco-ordemdia">
+        <h3>Ordem do Dia</h3>
+        <div className="ordem-lista">
+          {(dados.ordemDoDia || []).map((mat, idx) => (
+            <div key={mat.id || idx} className="ordem-mat-item">
+              <strong>{mat.tipo === "materia" ? "Matéria" : "Ata"}:</strong> {mat.titulo || "-"}
+              <span> | <strong>Status:</strong> {mat.status || "-"} </span>
+              <span> | <strong>Autor:</strong> {mat.autor || "-"} </span>
             </div>
           ))}
         </div>
-        <div className="painel-tribuna">
-          <b>Tribuna</b>
-          {tribunaAtual.oradorAtivoIdx >= 0 && tribunaAtual.oradores?.length > 0 ? (
-            (() => {
-              const orador = tribunaAtual.oradores[tribunaAtual.oradorAtivoIdx] || {};
-              const parl = parlamentares.find(p => p.id === orador.id) || {};
+      </section>
+
+      {/* Votação */}
+      <section className="bloco-votacao-central">
+        <h3>Votação</h3>
+        <table className="tabela-votos-central">
+          <thead>
+            <tr><th>Vereador</th><th>Voto</th></tr>
+          </thead>
+          <tbody>
+            {presentes.map(parl => {
+              const voto = votos.find(v => v.id === parl.id);
               return (
-                <div className="tribuna-orador">
-                  <img src={parl.foto || "/assets/default-parlamentar.png"} alt={orador.nome} className="tribuna-foto" />
-                  <div>
-                    <div className="tribuna-nome">{orador.nome} <span className="tribuna-partido">({orador.partido || "--"})</span></div>
-                    <div className="tribuna-tempo">{tribunaAtual.tempoRestante || orador.tempoFala || "--"}s</div>
-                    <div className="tribuna-legenda">{legenda || <span style={{ color: "#aaa" }}>Legenda aguardando IA...</span>}</div>
-                  </div>
-                </div>
+                <tr key={parl.id}>
+                  <td>{parl.nome} <span className="partido">({parl.partido})</span></td>
+                  <td>
+                    {voto ? (
+                      voto.voto === "sim"
+                        ? "✅ Sim"
+                        : voto.voto === "nao"
+                        ? "❌ Não"
+                        : voto.voto === "abstencao"
+                        ? "⚪ Abstenção"
+                        : voto.voto
+                    ) : "—"}
+                  </td>
+                </tr>
               );
-            })()
-          ) : (
-            <div style={{ color: "#888" }}>Nenhum orador na tribuna</div>
-          )}
-        </div>
-      </div>
-      <div className="painel-votacao">
-        <b>Votação</b>
-        <div className="painel-votos-lista">
-          <table>
-            <thead>
-              <tr>
-                <th>Vereador</th>
-                <th>Voto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {parlHabilitados.map(p => {
-                const voto = Object.values(resultado).find(v => v.vereador_id === p.id || v.id === p.id) || {};
-                let txt = "Aguardando";
-                if (voto.voto === "sim" || voto.voto === "Sim") txt = "✅ Sim";
-                else if (voto.voto === "nao" || voto.voto === "Não") txt = "❌ Não";
-                else if (voto.voto === "abstencao" || voto.voto === "Abstenção") txt = "⚪ Abstenção";
-                return (
-                  <tr key={p.id}>
-                    <td>{p.nome} <span className="parl-partido">({p.partido || "--"})</span></td>
-                    <td>{txt}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="votacao-grafico">
-            <Bar data={dataGrafico} />
+            })}
+          </tbody>
+        </table>
+        {/* Gráfico Resultado Final */}
+        {dados.votacaoAtual?.resultado && (
+          <div className="painel-grafico">
+            <Bar
+              data={{
+                labels: ["Sim", "Não", "Abstenção"],
+                datasets: [{
+                  label: "Votos",
+                  data: [
+                    dados.votacaoAtual.resultado.sim || 0,
+                    dados.votacaoAtual.resultado.nao || 0,
+                    dados.votacaoAtual.resultado.abstencao || 0,
+                  ],
+                  borderWidth: 1,
+                }]
+              }}
+            />
           </div>
-        </div>
-      </div>
-      {/* Banner IA e Letreiro Final pós sessão */}
-      {showNoticia && noticiaFinal}
+        )}
+      </section>
+
+      {/* Letreiro/ata/mensagens rápidas */}
+      <Letreiro texto={dados.ata || dados.ataCompleta || ""} />
     </div>
   );
 }
