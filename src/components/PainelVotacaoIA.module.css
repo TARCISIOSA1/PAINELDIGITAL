@@ -1,364 +1,378 @@
+/* Painel Principal */
 .painelContainer {
-  background: #f7fafd;
+  width: 100%;
   min-height: 100vh;
-  padding: 0;
-  font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
-  overflow-x: hidden;
+  background: #f9fafb;
+  color: #20323c;
+  font-family: 'Inter', Arial, sans-serif;
+  padding-bottom: 48px;
 }
 
-/* FLEX MAIS COMPACTO E CENTRALIZADO */
+/* Topo institucional (logo/nome) */
+.topo {
+  margin-bottom: 10px;
+}
+
+/* Bloco principal flexível */
 .painelFlexMain {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px 16px;
-  justify-content: center;
+  gap: 24px;
   align-items: flex-start;
-  max-width: 1200px;
-  margin: 0 auto;
+  justify-content: space-between;
+  margin-bottom: 24px;
 }
 
-.painelBlocoInfo,
-.painelBlocoPresentes,
-.painelBlocoTribuna,
-.painelBlocoOrdem,
-.painelBlocoVotacao {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 2px 10px rgba(26,75,163,0.06);
-  padding: 13px 10px 11px 10px;
-  min-width: 175px;
-  max-width: 220px;
+.painelBlocoInfo {
+  min-width: 260px;
+  max-width: 320px;
+  background: #e5f3f0;
+  border-radius: 14px;
+  padding: 20px 22px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.04);
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.painelBlocoInfo b {
+  color: #13825c;
+}
+
+.painelBlocoOrdem {
+  flex: 1;
+  min-width: 250px;
+  background: #f7f9fa;
+  border-radius: 12px;
+  padding: 18px 18px 10px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 10px rgba(0,0,0,0.03);
+}
+
+.painelBlocoOrdem h3 {
+  font-size: 18px;
   margin-bottom: 8px;
-  min-height: 80px;
-  flex: 1 0 190px;
+  color: #226a4b;
 }
 
-.painelBlocoInfo { max-width: 205px; }
-.painelBlocoPresentes, .painelBlocoTribuna { max-width: 225px;}
-.painelBlocoOrdem { max-width: 250px;}
-.painelBlocoVotacao { max-width: 280px;}
+.ordemdiaLista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ordemItem {
+  padding: 10px 12px;
+  background: #eafcf8;
+  border-left: 5px solid #13825c;
+  border-radius: 8px;
+  font-size: 15px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+}
+.ordemItem[data-status="aprovada"] { border-left-color: #19b86b; }
+.ordemItem[data-status="rejeitada"] { border-left-color: #e55; }
+.ordemItem[data-status="semquorum"] { border-left-color: #e6c000; }
 
-.painelBlocoInfo h3,
-.painelBlocoPresentes h3,
-.painelBlocoTribuna h3,
-.painelBlocoOrdem h3,
-.painelBlocoVotacao h3 {
-  text-align: center;
-  font-size: 1.05rem;
-  font-weight: 700;
-  margin-bottom: 8px;
-  color: #224273;
+.painelBlocoPresentes {
+  min-width: 260px;
+  flex: 1 1 320px;
+  background: #f6f8fb;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.03);
 }
 
-.presentesLista, .tribunaLista {
+.painelBlocoPresentes h3 {
+  font-size: 18px;
+  color: #226a4b;
+  margin-bottom: 7px;
+}
+
+.presentesLista {
   display: flex;
   flex-wrap: wrap;
-  gap: 7px 7px;
-  justify-content: center;
-  align-items: flex-start;
+  gap: 16px 30px;
+  padding-top: 5px;
 }
 
-.parlamentarMini, .oradorMini {
-  background: #f5faff;
-  border-radius: 10px;
-  min-width: 82px;
-  max-width: 94px;
-  min-height: 100px;
-  padding: 7px 4px 4px 4px;
+.parlamentarMini {
   display: flex;
   flex-direction: column;
   align-items: center;
-  box-shadow: 0 1px 4px rgba(38,98,204,0.05);
-  margin-bottom: 4px;
-  position: relative;
-  transition: box-shadow .16s;
-}
-
-.parlamentarMini img,
-.oradorMini img {
-  width: 38px;
-  height: 38px;
-  object-fit: cover;
-  border-radius: 50%;
-  border: 1.2px solid #e3ecf9;
-  margin-bottom: 4px;
   background: #fff;
+  border-radius: 10px;
+  padding: 9px 14px;
+  min-width: 105px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+  border: 1px solid #e5e5e5;
+  transition: transform .09s;
+}
+.parlamentarMini:hover { transform: scale(1.04); }
+
+.parlamentarMini img {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 6px;
+  border: 2px solid #b8e8d3;
 }
 
 .miniNome {
-  font-size: 0.89rem;
-  font-weight: 600;
-  text-align: center;
-  margin-bottom: 1px;
-  line-height: 1.13;
-  word-break: break-word;
-  white-space: normal;
-  max-width: 74px;
-  overflow-wrap: break-word;
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 2px;
 }
 
 .miniPartido {
-  font-size: 0.84rem;
-  color: #245dae;
+  font-size: 13px;
+  color: #13825c;
   font-weight: 500;
-  margin-bottom: 0;
-  text-align: center;
+  margin-bottom: 2px;
 }
 
-.miniTempo {
-  font-size: 0.77rem;
-  color: #888;
-  margin-top: 1px;
-  text-align: center;
+.painelBlocoTribuna {
+  min-width: 260px;
+  flex: 1 1 320px;
+  background: #f6f8fb;
+  border-radius: 12px;
+  padding: 18px 18px 10px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 7px rgba(0,0,0,0.03);
 }
-
-.oradorAtivo {
-  border: 1.6px solid #147dff;
-  box-shadow: 0 0 0 1.5px #e3ecf9;
+.painelBlocoTribuna h3 {
+  font-size: 18px;
+  color: #226a4b;
+  margin-bottom: 7px;
 }
-
-.miniAtivoDestaque {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -24px;
-  width: 92%;
-  background: #e6f2ff;
-  border-radius: 6px;
-  text-align: center;
-  font-size: 0.74rem;
-  color: #147dff;
-  font-weight: bold;
-  padding: 4px 2px 1px 2px;
-  box-shadow: 0 1px 8px rgba(38,98,204,0.04);
-  z-index: 10;
-}
-
-.tribunaMiniCronometro {
-  font-size: 0.97rem;
-  color: #154fa7;
-  margin-top: 1px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-}
-
-.legendaMini {
-  color: #888;
-  font-size: 0.83rem;
-  margin-top: 1px;
-  word-break: break-word;
-  text-align: center;
-  max-width: 94%;
-}
-
-/* Ordem do Dia e Votação adaptados */
-.ordemdiaLista {
+.tribunaLista {
   display: flex;
   flex-direction: column;
   gap: 7px;
 }
-.ordemItem {
-  background: #f8fcff;
-  padding: 6px 5px;
-  border-radius: 6px;
-  box-shadow: 0 1px 3px #c6dff526;
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: #1d3858;
-  border-left: 3px solid #0071c7;
-}
-.ordemItem[data-status="aprovada"] { border-left: 3px solid #1aac36;}
-.ordemItem[data-status="rejeitada"] { border-left: 3px solid #ce3636;}
-.ordemItem[data-status="semquorum"] { border-left: 3px solid #d1b800;}
-
-/* VOTAÇÃO */
-.votacaoTabelaGrafico {
-  display: flex;
-  gap: 8px;
-  align-items: flex-start;
-}
-.votacaoTabelaGrafico table {
-  min-width: 100px;
-  background: #fff;
-  border-radius: 5px;
-  font-size: 0.93rem;
-  box-shadow: 0 1px 4px #8db2e61a;
-  overflow: hidden;
-}
-.votacaoTabelaGrafico th, .votacaoTabelaGrafico td {
-  padding: 3px 5px;
-  text-align: left;
-}
-.votacaoTabelaGrafico tr:nth-child(even) {
-  background: #f0f6ff;
-}
-.votacaoTabelaGrafico .partido {
-  color: #245dae;
-  font-size: .93em;
-}
-
-.painelGraficoMini {
-  min-width: 68px;
-  height: 52px;
+.oradorMini {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 12px;
+  background: #f0f4f3;
+  border-radius: 8px;
+  padding: 7px 14px 7px 7px;
+  font-size: 15px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  border-left: 5px solid #95b8a3;
+  position: relative;
+}
+.oradorAtivo {
+  background: #eafcf8;
+  border-left-color: #17be70;
+}
+.oradorMini img {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #91cfb3;
+}
+.miniTempo {
+  margin-left: auto;
+  font-size: 13px;
+  color: #5e8376;
+}
+.miniAtivoDestaque {
+  margin-left: 16px;
+  padding: 3px 7px 3px 9px;
+  border-radius: 6px;
+  background: #d2f7e8;
+  color: #109865;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+}
+.tribunaMiniCronometro {
+  font-weight: bold;
+  font-size: 18px;
+  color: #109865;
+}
+.legendaMini {
+  font-size: 14px;
+  color: #4c4c4c;
+  margin-top: 3px;
+  font-style: italic;
 }
 
-/* Letreiro - Marquee */
-.letreiroMarquee {
-  width: 100vw;
-  background: #00264d;
-  color: #fff;
-  font-size: 0.99rem;
-  font-weight: 600;
-  padding: 5px 0 5px 0;
-  margin-top: 14px;
+.painelBlocoVotacao {
+  min-width: 260px;
+  flex: 1 1 320px;
+  background: #f6f8fb;
+  border-radius: 12px;
+  padding: 18px 18px 10px 18px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 7px rgba(0,0,0,0.03);
+}
+.painelBlocoVotacao h3 {
+  font-size: 18px;
+  color: #226a4b;
+  margin-bottom: 7px;
+}
+.votacaoTabelaGrafico {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.votacaoTabelaGrafico table {
+  width: 100%;
+  font-size: 15px;
+  background: #fdfdfd;
+  border-radius: 8px;
   overflow: hidden;
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  z-index: 99;
-  letter-spacing: .05em;
-  white-space: nowrap;
-  text-shadow: 0 1px 2px #0012226b;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+  margin-bottom: 6px;
 }
-.letreiroMarquee span {
-  display: inline-block;
-  padding-left: 120vw;
-  animation: marquee 21s linear infinite;
+.votacaoTabelaGrafico th, .votacaoTabelaGrafico td {
+  padding: 6px 10px;
+  text-align: left;
 }
-@keyframes marquee {
-  from { transform: translateX(0);}
-  to { transform: translateX(-120vw);}
+.votacaoTabelaGrafico thead {
+  background: #b8e8d3;
+}
+.painelGraficoMini {
+  max-width: 360px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 10px;
+  padding: 9px 10px;
 }
 
-/* FULLSCREEN */
-.painelIaFullscreen,
-.painelIaEncerrada {
-  background: #eff7ff;
+/* Banner, Letreiro, e status */
+.bannerBoasvindas {
+  margin: 34px 0 20px 0;
+  text-align: center;
+}
+.bannerBoasvindas h1 {
+  font-size: 2rem;
+  color: #196f5c;
+  letter-spacing: 0.5px;
+}
+.letreiroMarquee {
+  margin: 18px 0 5px 0;
+  font-size: 17px;
+  font-weight: 500;
+  color: #19736a;
+  background: #e2f6f3;
+  padding: 7px 0;
+  border-radius: 5px;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.status-tag {
+  font-size: 14px;
+  border-radius: 4px;
+  padding: 2.5px 8px;
+  color: #fff;
+  margin-left: 7px;
+  background: #13825c;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.status-tag.status-encerrada { background: #ea4444; }
+.status-tag.status-em { background: #f6b214; color: #444; }
+.status-tag.status-andamento { background: #13825c; }
+
+/* Fullscreen Tribuna/Votação */
+.painelIaFullscreen {
   min-height: 100vh;
-  width: 100vw !important;
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 9999;
+  background: #e4f3f0;
   padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative;
 }
 
 .tribunaFull {
+  margin: 54px 0 0 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin-top: 24px;
-  width: 100vw;
-  justify-content: center;
+  background: #f6fff9;
+  border-radius: 18px;
+  padding: 26px 38px 24px 38px;
+  box-shadow: 0 5px 18px rgba(0,0,0,0.11);
 }
+
 .fotoOradorFull {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
+  width: 112px;
+  height: 112px;
+  border-radius: 60px;
+  border: 5px solid #b9f7e1;
   object-fit: cover;
-  border: 3px solid #0071c7;
-  box-shadow: 0 2px 12px #0071c739;
-  margin-bottom: 12px;
-  background: #fff;
+  margin-bottom: 22px;
+  background: #f9fafb;
 }
-.tribunaFullInfo { text-align: center; margin-bottom: 9px; }
-.tribunaFullNome { font-size: 1.29rem; font-weight: 700; color: #2b2b50; margin-bottom: 3px;}
-.tribunaFullPartido { font-size: 0.95rem; color: #166edc; font-weight: 600; margin-bottom: 3px;}
-.tribunaFullOrdem { font-size: 0.95rem; color: #333; margin-bottom: 2px;}
-.tribunaFullCronometro { font-size: 1.19rem; color: #0071c7; font-weight: bold;}
-
-.legendaTribunaFull {
-  background: #f7f7f7;
-  border-radius: 8px;
-  color: #232323;
-  font-size: 0.99rem;
-  font-weight: 500;
-  margin-top: 7px;
-  padding: 10px 7px;
-  max-width: 380px;
-  min-width: 90px;
-  min-height: 20px;
+.tribunaFullInfo {
   text-align: center;
-  box-shadow: 0 1px 7px rgba(13,59,143,0.04);
+  margin-bottom: 16px;
+}
+.tribunaFullNome {
+  font-size: 2.2rem;
+  font-weight: bold;
+  color: #196f5c;
+}
+.tribunaFullPartido {
+  font-size: 1.2rem;
+  color: #109865;
+}
+.tribunaFullOrdem {
+  font-size: 1.1rem;
+  color: #147c61;
+}
+.tribunaFullCronometro {
+  font-size: 2.1rem;
+  font-weight: 700;
+  color: #147c61;
+  margin-top: 8px;
+}
+.legendaTribunaFull {
+  font-size: 1.15rem;
+  color: #555;
+  margin-top: 14px;
+  min-height: 34px;
+  max-width: 500px;
+  text-align: center;
+  font-style: italic;
 }
 
-.painelFullscreenBtn {
-  position: fixed;
-  right: 14px;
-  top: 9px;
-  background: #1463ac;
-  color: #fff;
-  font-size: 1.07rem;
-  border: none;
-  border-radius: 38px;
-  padding: 5px 10px 5px 10px;
-  box-shadow: 0 2px 8px #217cf25b;
-  cursor: pointer;
-  z-index: 999999;
-  transition: background .14s;
-}
-.painelFullscreenBtn:hover { background: #287ac4; }
-
-/* RESPONSIVO */
-@media (max-width: 980px) {
-  .painelFlexMain { gap: 8px 8px; }
-  .painelBlocoInfo, .painelBlocoPresentes, .painelBlocoTribuna, .painelBlocoOrdem, .painelBlocoVotacao { max-width: 99vw;}
-}
-
-@media (max-width: 700px) {
-  .painelFlexMain {
-    flex-direction: column;
-    gap: 6px;
-    padding: 0 1vw;
-    max-width: 99vw;
-  }
-  .painelBlocoInfo,
-  .painelBlocoPresentes,
-  .painelBlocoTribuna,
-  .painelBlocoOrdem,
-  .painelBlocoVotacao {
-    padding: 6px 1vw 6px 1vw;
-    min-width: 75px;
-    max-width: 99vw;
-    margin-bottom: 7px;
-  }
-  .presentesLista, .tribunaLista {
-    flex-direction: row;
-    gap: 5px 3px;
-  }
-  .parlamentarMini, .oradorMini {
-    min-width: 62px;
-    max-width: 99vw;
-    padding: 3px 1px 2px 1px;
-  }
-  .miniNome, .miniPartido {
-    max-width: 85vw;
-    font-size: 0.82rem;
-  }
-  .miniAtivoDestaque {
-    width: 96%;
-    font-size: 0.69rem;
-  }
-  .legendaTribunaFull {
-    font-size: 0.86rem;
-    padding: 6px 3px;
-    max-width: 99vw;
-  }
-}
-.fixedBtns {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  z-index: 9999;
+/* Fullscreen votação */
+.votacaoFull {
+  margin: 60px auto 0 auto;
+  width: 100%;
+  max-width: 600px;
+  background: #f5f8f6;
+  border-radius: 18px;
+  padding: 34px 42px 32px 42px;
+  box-shadow: 0 5px 18px rgba(0,0,0,0.10);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+}
+.votacaoFull h2 {
+  font-size: 2.0rem;
+  color: #196f5c;
+  margin-bottom: 24px;
+}
+
+/* Botões fixos (Tela Auxiliar, Fullscreen) */
+.fixedBtns {
+  position: fixed;
+  bottom: 26px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 .btnAuxiliar,
 .btnFullscreen {
@@ -366,14 +380,26 @@
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
-  padding: 10px 18px;
+  font-size: 17px;
+  padding: 12px 24px;
   margin: 0;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: background 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+  transition: background 0.16s;
 }
 .btnAuxiliar:hover,
 .btnFullscreen:hover {
-  background: #12825d;
+  background: #13825c;
+}
+
+.painelIaAguardando,
+.painelIaEncerrada {
+  min-height: 100vh;
+  background: #f5f7fa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  color: #13825c;
 }
