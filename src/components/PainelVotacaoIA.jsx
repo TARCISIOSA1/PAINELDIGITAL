@@ -40,7 +40,7 @@ function usarTTS(texto) {
 // Função para filtrar linguagem imprópria (exemplo simples)
 const filtroLinguagem = (txt) => txt.replace(/(porra|merda|puta|caralho)/gi, "⚠️");
 
-export default function PainelVotacaoUltra() {
+export default function PainelVotacaoIA() {
   const [dados, setDados] = useState(null);
   const [presentes, setPresentes] = useState([]);
   const [votos, setVotos] = useState([]);
