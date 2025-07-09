@@ -1,4 +1,8 @@
 {
-  "nomeCamara": "Câmara Municipal de Santa Maria",
-  "logoPath": "/assets/logo-da-camara.png"
+  "logoPath": "/logo-camara.png",
+  "nomeCamara": "Câmara Municipal Santa Maria",
+  "cidade": "Santa Maria",
+  "slogan": "Gestão Inteligente de Sessões Legislativas",
+  "urlTransparencia": "https://sualink.com/transparencia",
+  "mensagensFinais": ["Sessão encerrada. Acompanhe o resumo na imprensa local.", "Participe das audiências públicas!", "Ouvidoria: (99) 99999-9999"]
 }
