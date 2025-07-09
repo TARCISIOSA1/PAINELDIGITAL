@@ -351,3 +351,29 @@
     max-width: 99vw;
   }
 }
+.fixedBtns {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.btnAuxiliar,
+.btnFullscreen {
+  background: #196f5c;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  padding: 10px 18px;
+  margin: 0;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: background 0.2s;
+}
+.btnAuxiliar:hover,
+.btnFullscreen:hover {
+  background: #12825d;
+}
