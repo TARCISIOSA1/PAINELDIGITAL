@@ -6,23 +6,22 @@ import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 } from "chart.js";
-import "./PainelVotacaoIA.css";
+import styles from "./PainelVotacaoIA.module.css";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 function Letreiro({ texto }) {
   if (!texto) return null;
   return (
-    <div className="letreiro-marquee">
+    <div className={styles.letreiroMarquee}>
       <span>{texto}</span>
     </div>
   );
 }
 
-// Banner simples institucional
 function BannerBoasVindas({ frase }) {
   return (
-    <div className="banner-boasvindas">
+    <div className={styles.bannerBoasvindas}>
       <h1>{frase || "Bem-vindos à Sessão Plenária"}</h1>
     </div>
   );
@@ -34,7 +33,6 @@ export default function PainelVotacaoIA() {
   const [votos, setVotos] = useState([]);
   const [width, setWidth] = useState(window.innerWidth);
 
-  // Atualiza tamanho para responsividade adaptada
   useEffect(() => {
     const handleResize = () => setWidth(window.innerWidth);
     window.addEventListener("resize", handleResize);
@@ -50,7 +48,6 @@ export default function PainelVotacaoIA() {
           (data?.habilitados || []).includes(p.id)
         )
       );
-      // Protege votos: só processa se existir
       const votosObj = data?.votacaoAtual?.votos || {};
       setVotos(
         Object.keys(votosObj).map((vid) => ({
@@ -63,30 +60,29 @@ export default function PainelVotacaoIA() {
   }, []);
 
   if (!dados) {
-    return <div className="painel-ia-aguardando">Aguardando início da sessão...</div>;
+    return <div className={styles.painelIaAguardando}>Aguardando início da sessão...</div>;
   }
 
-  // ---- FULLSCREEN TRIBUNA, quando há orador ativo ----
   if (dados?.tribunaAtual?.cronometroAtivo && dados?.tribunaAtual?.oradorAtivoIdx >= 0 && dados?.tribunaAtual?.oradores?.length > 0) {
     const idx = dados.tribunaAtual.oradorAtivoIdx;
     const orador = dados.tribunaAtual.oradores[idx];
     const parlamentar = (dados?.parlamentares || []).find(p => p.id === orador.id);
     return (
-      <div className="painel-ia-fullscreen">
-        <TopoInstitucional />
-        <div className="tribuna-full">
+      <div className={styles.painelIaFullscreen}>
+        <TopoInstitucional className={styles.topo} />
+        <div className={styles.tribunaFull}>
           <img
             src={parlamentar?.foto || "/assets/default-parlamentar.png"}
             alt={orador.nome}
-            className="foto-orador-full"
+            className={styles.fotoOradorFull}
           />
-          <div className="tribuna-full-info">
-            <div className="tribuna-full-nome">{orador.nome}</div>
-            <div className="tribuna-full-partido">{orador.partido}</div>
-            <div className="tribuna-full-ordem">Ordem #{idx + 1}</div>
-            <div className="tribuna-full-cronometro">{dados.tribunaAtual.tempoRestante}s</div>
+          <div className={styles.tribunaFullInfo}>
+            <div className={styles.tribunaFullNome}>{orador.nome}</div>
+            <div className={styles.tribunaFullPartido}>{orador.partido}</div>
+            <div className={styles.tribunaFullOrdem}>Ordem #{idx + 1}</div>
+            <div className={styles.tribunaFullCronometro}>{dados.tribunaAtual.tempoRestante}s</div>
           </div>
-          <div className="legenda-tribuna-full">
+          <div className={styles.legendaTribunaFull}>
             {dados.tribunaAtual.legenda || <span style={{color:"#ccc"}}>Legenda não disponível</span>}
           </div>
         </div>
@@ -94,7 +90,6 @@ export default function PainelVotacaoIA() {
     );
   }
 
-  // ---- FULLSCREEN VOTAÇÃO, quando votação estiver "Em votação" ----
   if (dados?.votacaoAtual?.status === "Em votação") {
     const resultado = dados?.votacaoAtual?.resultado || {};
     const chartData = {
@@ -108,9 +103,9 @@ export default function PainelVotacaoIA() {
       ],
     };
     return (
-      <div className="painel-ia-fullscreen">
-        <TopoInstitucional />
-        <div className="votacao-full">
+      <div className={styles.painelIaFullscreen}>
+        <TopoInstitucional className={styles.topo} />
+        <div className={styles.votacaoFull}>
           <h2>Votação em Andamento</h2>
           <Bar data={chartData} options={{responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}}} />
         </div>
@@ -118,28 +113,22 @@ export default function PainelVotacaoIA() {
     );
   }
 
-  // ---- APÓS ENCERRAR, exibe letreiro/ata/mensagens ----
   if (dados?.statusSessao === "Encerrada") {
     return (
-      <div className="painel-ia-encerrada">
-        <TopoInstitucional />
+      <div className={styles.painelIaEncerrada}>
+        <TopoInstitucional className={styles.topo} />
         <BannerBoasVindas frase="Sessão encerrada! Fique atento às notícias e novidades." />
         <Letreiro texto={dados.ataCompleta || dados.ata || "Aguarde informações."} />
       </div>
     );
   }
 
-  // ---- LAYOUT COMPACTO PADRÃO ----
-  // Ajuste máximo de linhas por bloco para caber sem scroll em telas > 1200px.
-  // No celular/tablet, layout colunar.
-
   return (
-    <div className="painel-ia-container">
-      <TopoInstitucional />
+    <div className={styles.painelContainer}>
+      <TopoInstitucional className={styles.topo} />
 
-      <div className="painel-flex-main">
-        {/* Sessão e mesa diretora */}
-        <div className="painel-bloco-info">
+      <div className={styles.painelFlexMain}>
+        <div className={styles.painelBlocoInfo}>
           <div><b>Data:</b> {dados?.data || "-"} <b>Hora:</b> {dados?.hora || "-"}</div>
           <div><b>Local:</b> {dados?.local || "-"}</div>
           <div>
@@ -157,41 +146,39 @@ export default function PainelVotacaoIA() {
           </div>
         </div>
 
-        {/* Presentes/habilitados */}
-        <div className="painel-bloco-presentes">
+        <div className={styles.painelBlocoPresentes}>
           <h3>Habilitados</h3>
-          <div className="presentes-lista">
+          <div className={styles.presentesLista}>
             {(presentes.length === 0 ? <span style={{opacity:.7}}>Nenhum habilitado</span> :
               presentes.slice(0, width > 600 ? 6 : 3).map(p => (
-                <div className="parlamentar-mini" key={p.id}>
+                <div className={styles.parlamentarMini} key={p.id}>
                   <img src={p.foto || "/assets/default-parlamentar.png"} alt={p.nome} />
-                  <span className="mini-nome">{p.nome}</span>
-                  <span className="mini-partido">{p.partido}</span>
+                  <span className={styles.miniNome}>{p.nome}</span>
+                  <span className={styles.miniPartido}>{p.partido}</span>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Tribuna com oradores */}
-        <div className="painel-bloco-tribuna">
+        <div className={styles.painelBlocoTribuna}>
           <h3>Tribuna</h3>
           {dados?.tribunaAtual?.oradores?.length > 0 ? (
-            <div className="tribuna-lista">
+            <div className={styles.tribunaLista}>
               {dados.tribunaAtual.oradores.map((orador, idx) => {
                 const parlamentar = (dados?.parlamentares || []).find(p => p.id === orador.id);
                 const oradorAtivo = dados.tribunaAtual.oradorAtivoIdx === idx;
                 return (
-                  <div className={`orador-mini ${oradorAtivo ? "orador-ativo" : ""}`} key={orador.id}>
+                  <div className={`${styles.oradorMini} ${oradorAtivo ? styles.oradorAtivo : ""}`} key={orador.id}>
                     <img src={parlamentar?.foto || "/assets/default-parlamentar.png"} alt={orador.nome} />
-                    <span className="mini-nome">{orador.nome}</span>
-                    <span className="mini-partido">{orador.partido}</span>
-                    <span className="mini-tempo">{orador.tempoFala}s</span>
+                    <span className={styles.miniNome}>{orador.nome}</span>
+                    <span className={styles.miniPartido}>{orador.partido}</span>
+                    <span className={styles.miniTempo}>{orador.tempoFala}s</span>
                     {oradorAtivo && (
-                      <div className="mini-ativo-destaque">
+                      <div className={styles.miniAtivoDestaque}>
                         <span>FALANDO AGORA</span>
-                        <span className="tribuna-mini-cronometro">{dados.tribunaAtual.tempoRestante || 0}s</span>
-                        <div className="legenda-mini">{dados.tribunaAtual.legenda || <span style={{color:"#888"}}>Legenda não disponível</span>}</div>
+                        <span className={styles.tribunaMiniCronometro}>{dados.tribunaAtual.tempoRestante || 0}s</span>
+                        <div className={styles.legendaMini}>{dados.tribunaAtual.legenda || <span style={{color:"#888"}}>Legenda não disponível</span>}</div>
                       </div>
                     )}
                   </div>
@@ -203,12 +190,16 @@ export default function PainelVotacaoIA() {
           )}
         </div>
 
-        {/* Ordem do dia */}
-        <div className="painel-bloco-ordem">
+        <div className={styles.painelBlocoOrdem}>
           <h3>Ordem do Dia</h3>
-          <div className="ordemdia-lista">
+          <div className={styles.ordemdiaLista}>
             {(dados?.ordemDoDia || []).slice(0, width > 600 ? 3 : 2).map((mat, idx) => (
-              <div key={mat.id || idx} className="ordem-item">
+              <div key={mat.id || idx}
+                className={styles.ordemItem}
+                data-status={mat.status === "Aprovada" ? "aprovada"
+                  : mat.status === "Rejeitada" ? "rejeitada"
+                  : mat.status === "Sem Quórum" ? "semquorum" : ""}
+              >
                 <b>{mat.tipo === "materia" ? "Matéria" : "Ata"}:</b> {mat.titulo || "-"}<br />
                 <b>Status:</b> {mat.status || "-"}<br />
                 <b>Autor:</b> {mat.autor || "-"}
@@ -217,10 +208,9 @@ export default function PainelVotacaoIA() {
           </div>
         </div>
 
-        {/* Votação */}
-        <div className="painel-bloco-votacao">
+        <div className={styles.painelBlocoVotacao}>
           <h3>Votação</h3>
-          <div className="votacao-tabela-grafico">
+          <div className={styles.votacaoTabelaGrafico}>
             <table>
               <thead>
                 <tr><th>Vereador</th><th>Voto</th></tr>
@@ -230,7 +220,7 @@ export default function PainelVotacaoIA() {
                   const voto = votos.find(v => v.id === parl.id);
                   return (
                     <tr key={parl.id}>
-                      <td>{parl.nome} <span className="partido">({parl.partido})</span></td>
+                      <td>{parl.nome} <span className={styles.partido}>({parl.partido})</span></td>
                       <td>
                         {voto ? (
                           voto.voto === "sim"
@@ -248,7 +238,7 @@ export default function PainelVotacaoIA() {
               </tbody>
             </table>
             {dados?.votacaoAtual?.resultado && (
-              <div className="painel-grafico-mini">
+              <div className={styles.painelGraficoMini}>
                 <Bar
                   data={{
                     labels: ["Sim", "Não", "Abstenção"],
