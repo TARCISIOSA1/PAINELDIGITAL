@@ -194,33 +194,38 @@ export default function PainelVotacaoIA() {
       </div>
 
       {/* Tribuna */}
-      <section className="bloco-tribuna-central">
-        <h3>Tribuna</h3>
-        {dados.tribunaAtual?.oradores?.length > 0 ? (
-          <div className="lista-oradores">
-            {dados.tribunaAtual.oradores.map((orador, idx) => {
-              const oradorAtivo = dados.tribunaAtual.oradorAtivoIdx === idx;
-              return (
-                <div
-                  key={orador.id}
-                  className={`orador-linha ${oradorAtivo ? "orador-ativo" : ""}`}
-                >
-                  <img src={orador.foto || "/assets/default-parlamentar.png"} alt={orador.nome} />
-                  <span className="orador-nome">{orador.nome}</span>
-                  <span className="partido">{orador.partido}</span>
-                  <span className="orador-tempo">{orador.tempoFala}s</span>
-                  {oradorAtivo && (
-                    <>
-                      <span className="orador-ativo-destaque">FALANDO AGORA</span>
-                      <span className="tribuna-cronometro">{dados.tribunaAtual.tempoRestante || 0}s</span>
-                      <div className="legenda-ia">
-                        {dados.tribunaAtual.legenda || <span style={{color:"#888"}}>Legenda não disponível</span>}
-                      </div>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+     {dados.tribunaAtual?.oradores?.length > 0 ? (
+  <div className="lista-oradores">
+    {dados.tribunaAtual.oradores.map((orador, idx) => {
+      // Busca parlamentar para pegar a foto
+      const parlamentar = dados.parlamentares?.find(p => p.id === orador.id);
+      const oradorAtivo = dados.tribunaAtual.oradorAtivoIdx === idx;
+      return (
+        <div
+          key={orador.id}
+          className={`orador-linha ${oradorAtivo ? "orador-ativo" : ""}`}
+        >
+          <img src={parlamentar?.foto || "/assets/default-parlamentar.png"} alt={orador.nome} />
+          <span className="orador-nome">{orador.nome}</span>
+          <span className="partido">{orador.partido}</span>
+          <span className="orador-tempo">{orador.tempoFala}s</span>
+          {oradorAtivo && (
+            <>
+              <span className="orador-ativo-destaque">FALANDO AGORA</span>
+              <span className="tribuna-cronometro">{dados.tribunaAtual.tempoRestante || 0}s</span>
+              <div className="legenda-ia">
+                {dados.tribunaAtual.legenda || <span style={{color:"#888"}}>Legenda não disponível</span>}
+              </div>
+            </>
+          )}
+        </div>
+      );
+    })}
+  </div>
+) : (
+  <div>Nenhum orador na tribuna.</div>
+)}
+
           </div>
         ) : (
           <p>Nenhum orador na tribuna.</p>
