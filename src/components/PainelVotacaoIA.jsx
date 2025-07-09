@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import "./PainelVotacaoUltra.css";
+import "./PainelVotacaoIA.css";
 import TopoInstitucional from "./TopoInstitucional";
 import panelConfig from "../config/panelConfig.json";
 import { doc, onSnapshot, getDocs, collection, query, where } from "firebase/firestore";
