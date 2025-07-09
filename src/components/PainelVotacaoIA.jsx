@@ -5,7 +5,7 @@ import panelConfig from "../config/panelConfig.json";
 import { doc, onSnapshot, getDocs, collection, query, where } from "firebase/firestore";
 import { db } from "../firebase";
 import { Bar } from "react-chartjs-2";
-import QRCode from "qrcode.react";
+import { QRCode } from "qrcode.react";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
