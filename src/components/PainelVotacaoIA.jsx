@@ -59,10 +59,23 @@ export default function PainelVotacaoIA() {
     return () => unsubscribe();
   }, []);
 
+  // Botão: Fullscreen
+  function handleFullscreen() {
+    const el = document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+  }
+  // Botão: Tela Auxiliar
+  function abrirTelaAuxiliar() {
+    window.open(window.location.href, "_blank", "width=1024,height=768");
+  }
+
   if (!dados) {
     return <div className={styles.painelIaAguardando}>Aguardando início da sessão...</div>;
   }
 
+  // Exibição em fullscreen tribuna
   if (dados?.tribunaAtual?.cronometroAtivo && dados?.tribunaAtual?.oradorAtivoIdx >= 0 && dados?.tribunaAtual?.oradores?.length > 0) {
     const idx = dados.tribunaAtual.oradorAtivoIdx;
     const orador = dados.tribunaAtual.oradores[idx];
@@ -86,10 +99,15 @@ export default function PainelVotacaoIA() {
             {dados.tribunaAtual.legenda || <span style={{color:"#ccc"}}>Legenda não disponível</span>}
           </div>
         </div>
+        <div className={styles.fixedBtns}>
+          <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
+          <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
+        </div>
       </div>
     );
   }
 
+  // Exibição em fullscreen votação
   if (dados?.votacaoAtual?.status === "Em votação") {
     const resultado = dados?.votacaoAtual?.resultado || {};
     const chartData = {
@@ -109,10 +127,15 @@ export default function PainelVotacaoIA() {
           <h2>Votação em Andamento</h2>
           <Bar data={chartData} options={{responsive: true, maintainAspectRatio: false, plugins:{legend:{display:false}}}} />
         </div>
+        <div className={styles.fixedBtns}>
+          <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
+          <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
+        </div>
       </div>
     );
   }
 
+  // Exibição de sessão encerrada
   if (dados?.statusSessao === "Encerrada") {
     return (
       <div className={styles.painelIaEncerrada}>
@@ -123,6 +146,7 @@ export default function PainelVotacaoIA() {
     );
   }
 
+  // Painel principal (normal)
   return (
     <div className={styles.painelContainer}>
       <TopoInstitucional className={styles.topo} />
@@ -267,6 +291,13 @@ export default function PainelVotacaoIA() {
       </div>
 
       <Letreiro texto={dados?.ata || dados?.ataCompleta || ""} />
+
+      {/* Botões fixos de tela auxiliar e fullscreen */}
+      <div className={styles.fixedBtns}>
+        <button className={styles.btnAuxiliar} onClick={abrirTelaAuxiliar} title="Abrir Tela Auxiliar">Tela Auxiliar</button>
+        <button className={styles.btnFullscreen} onClick={handleFullscreen} title="Tela Cheia">Fullscreen</button>
+      </div>
+
     </div>
   );
 }
