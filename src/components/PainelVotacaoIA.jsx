@@ -77,7 +77,6 @@ export default function PainelVotacaoIA() {
     else setFullVotacao(false);
   }, [dados]);
 
-  // --- DADOS PRINCIPAIS
   if (!dados) {
     return <div className="painel-ia-aguardando">Aguardando início da sessão...</div>;
   }
@@ -86,12 +85,14 @@ export default function PainelVotacaoIA() {
   if (fullTribuna && dados.tribunaAtual?.oradores?.length > 0) {
     const idx = dados.tribunaAtual.oradorAtivoIdx;
     const orador = dados.tribunaAtual.oradores[idx];
+    const parlamentar = dados.parlamentares?.find(p => p.id === orador.id);
+
     return (
       <div className="painel-ia-fullscreen" ref={containerRef}>
         <TopoInstitucional />
         <div className="tribuna-full">
           <img
-            src={orador.foto || "/assets/default-parlamentar.png"}
+            src={parlamentar?.foto || "/assets/default-parlamentar.png"}
             alt={orador.nome}
             className="foto-orador-full"
           />
@@ -106,7 +107,7 @@ export default function PainelVotacaoIA() {
         </div>
         {/* Legenda IA */}
         <div className="legenda-tribuna-full">
-          {dados.tribunaAtual.legenda || <span style={{color:"#ccc"}}>Legenda não disponível</span>}
+          {dados.tribunaAtual.legenda || <span style={{ color: "#ccc" }}>Legenda não disponível</span>}
         </div>
       </div>
     );
@@ -114,7 +115,6 @@ export default function PainelVotacaoIA() {
 
   // ---- FULL VOTAÇÃO (quando ativo) ----
   if (fullVotacao) {
-    // Grafico
     const resultado = dados.votacaoAtual?.resultado || {};
     const chartData = {
       labels: ["Sim", "Não", "Abstenção"],
@@ -171,9 +171,9 @@ export default function PainelVotacaoIA() {
           </div>
         </div>
         <div className="mesa-diretora">
-          <div><strong>Presidente:</strong> {dados.mesaDiretora?.find(x=>x.cargo==="Presidente")?.nome || "-"}</div>
-          <div><strong>Vice:</strong> {dados.mesaDiretora?.find(x=>x.cargo==="Vice-Presidente")?.nome || "-"}</div>
-          <div><strong>Secretário:</strong> {dados.mesaDiretora?.find(x=>x.cargo==="Secretário")?.nome || "-"}</div>
+          <div><strong>Presidente:</strong> {dados.mesaDiretora?.find(x => x.cargo === "Presidente")?.nome || "-"}</div>
+          <div><strong>Vice:</strong> {dados.mesaDiretora?.find(x => x.cargo === "Vice-Presidente")?.nome || "-"}</div>
+          <div><strong>Secretário:</strong> {dados.mesaDiretora?.find(x => x.cargo === "Secretário")?.nome || "-"}</div>
         </div>
       </div>
 
@@ -193,42 +193,38 @@ export default function PainelVotacaoIA() {
         </div>
       </div>
 
-      {/* Tribuna */}
-     {dados.tribunaAtual?.oradores?.length > 0 ? (
-  <div className="lista-oradores">
-    {dados.tribunaAtual.oradores.map((orador, idx) => {
-      // Busca parlamentar para pegar a foto
-      const parlamentar = dados.parlamentares?.find(p => p.id === orador.id);
-      const oradorAtivo = dados.tribunaAtual.oradorAtivoIdx === idx;
-      return (
-        <div
-          key={orador.id}
-          className={`orador-linha ${oradorAtivo ? "orador-ativo" : ""}`}
-        >
-          <img src={parlamentar?.foto || "/assets/default-parlamentar.png"} alt={orador.nome} />
-          <span className="orador-nome">{orador.nome}</span>
-          <span className="partido">{orador.partido}</span>
-          <span className="orador-tempo">{orador.tempoFala}s</span>
-          {oradorAtivo && (
-            <>
-              <span className="orador-ativo-destaque">FALANDO AGORA</span>
-              <span className="tribuna-cronometro">{dados.tribunaAtual.tempoRestante || 0}s</span>
-              <div className="legenda-ia">
-                {dados.tribunaAtual.legenda || <span style={{color:"#888"}}>Legenda não disponível</span>}
-              </div>
-            </>
-          )}
-        </div>
-      );
-    })}
-  </div>
-) : (
-  <div>Nenhum orador na tribuna.</div>
-)}
-
+      {/* Tribuna - Lista e orador ativo */}
+      <section className="bloco-tribuna-central">
+        <h3>Tribuna</h3>
+        {dados.tribunaAtual?.oradores?.length > 0 ? (
+          <div className="lista-oradores">
+            {dados.tribunaAtual.oradores.map((orador, idx) => {
+              const parlamentar = dados.parlamentares?.find(p => p.id === orador.id);
+              const oradorAtivo = dados.tribunaAtual.oradorAtivoIdx === idx;
+              return (
+                <div
+                  key={orador.id}
+                  className={`orador-linha ${oradorAtivo ? "orador-ativo" : ""}`}
+                >
+                  <img src={parlamentar?.foto || "/assets/default-parlamentar.png"} alt={orador.nome} />
+                  <span className="orador-nome">{orador.nome}</span>
+                  <span className="partido">{orador.partido}</span>
+                  <span className="orador-tempo">{orador.tempoFala}s</span>
+                  {oradorAtivo && (
+                    <>
+                      <span className="orador-ativo-destaque">FALANDO AGORA</span>
+                      <span className="tribuna-cronometro">{dados.tribunaAtual.tempoRestante || 0}s</span>
+                      <div className="legenda-ia">
+                        {dados.tribunaAtual.legenda || <span style={{ color: "#888" }}>Legenda não disponível</span>}
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         ) : (
-          <p>Nenhum orador na tribuna.</p>
+          <div>Nenhum orador na tribuna.</div>
         )}
       </section>
 
