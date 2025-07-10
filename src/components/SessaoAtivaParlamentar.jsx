@@ -22,6 +22,9 @@ export default function SessaoAtivaParlamentar() {
   // Modal de confirmação de voto
   const [modalConfirm, setModalConfirm] = useState({ exibir: false, etapa: 1, votoNovo: "" });
 
+  // RESUMO DA MATÉRIA
+  const [materiaResumo, setMateriaResumo] = useState(null);
+
   // Carrega TODOS os parlamentares
   useEffect(() => {
     async function fetchParlamentares() {
@@ -81,6 +84,19 @@ export default function SessaoAtivaParlamentar() {
     }
     fetchMaterias();
   }, []);
+
+  // BUSCA O RESUMO DA MATERIA DA VOTAÇÃO (campo exposicao)
+  useEffect(() => {
+    async function buscarMateriaResumo() {
+      if (painel && painel.votacaoAtual && painel.votacaoAtual.id) {
+        const snap = await getDoc(doc(db, "materias", painel.votacaoAtual.id));
+        setMateriaResumo(snap.exists() ? snap.data() : null);
+      } else {
+        setMateriaResumo(null);
+      }
+    }
+    buscarMateriaResumo();
+  }, [painel?.votacaoAtual?.id]);
 
   // PEDIDOS DE FALA - sempre do painelAtivo
   const pedidosTribuna = painel?.pedidosTribuna || [];
@@ -236,6 +252,12 @@ export default function SessaoAtivaParlamentar() {
             <div className="sessao-info">
               <h2>Votação em Andamento</h2>
               <p><b>Matéria:</b> {materia}</p>
+              {/* RESUMO AUTOMÁTICO DA MATERIA */}
+              {materiaResumo?.exposicao && (
+                <div className="materia-resumo">
+                  <b>Resumo:</b> {materiaResumo.exposicao}
+                </div>
+              )}
               <p><b>Tipo:</b> {tipo}</p>
               <p><b>Autor:</b> {autor}</p>
               <p><b>Status:</b> <span className="status-votacao">{votacaoAtual?.status || "-"}</span></p>
@@ -537,6 +559,7 @@ export default function SessaoAtivaParlamentar() {
   );
 }
 
+// Formata data para dd/mm/aaaa hh:mm
 function formatarData(str) {
   if (!str) return "";
   const d = new Date(str);
