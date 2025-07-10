@@ -1,62 +1,84 @@
 import React, { useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
-import Chat from "./email/Chat"; // <<== Usa seu Chat existente!
+import Chat from "./email/Chat";
 import "./SessaoAtivaParlamentar.css";
 
-const getUsuarioLogado = () => ({
-  id: localStorage.getItem("id"),
-  nome: localStorage.getItem("nome"),
-  partido: localStorage.getItem("partido"),
-  foto: localStorage.getItem("foto"),
-  tipo: localStorage.getItem("tipo"),
-});
-
 export default function SessaoAtivaParlamentar() {
-  const usuario = getUsuarioLogado();
+  const usuarioId = localStorage.getItem("id");
+
+  const [parlamentar, setParlamentar] = useState(null);
   const [painel, setPainel] = useState(null);
   const [voto, setVoto] = useState("");
   const [aba, setAba] = useState("votacao");
   const [enviando, setEnviando] = useState(false);
 
-  // PEDIR PALAVRA
+  // Pedir palavra
   const [pedidoFeito, setPedidoFeito] = useState(false);
 
-  // MODAL DE CONFIRMAÇÃO DUPLA (votação)
+  // Modal de confirmação de voto
   const [modalConfirm, setModalConfirm] = useState({ exibir: false, etapa: 1, votoNovo: "" });
 
+  // Badge alerta chat
+  const [chatAlert, setChatAlert] = useState(false);
+
   useEffect(() => {
-    // Painel ativo
+    if (!usuarioId) return;
+    async function fetchParlamentar() {
+      const snap = await getDoc(doc(db, "parlamentares", usuarioId));
+      setParlamentar(snap.exists() ? snap.data() : null);
+    }
+    fetchParlamentar();
+  }, [usuarioId]);
+
+  useEffect(() => {
     const ref = doc(db, "painelAtivo", "ativo");
     const unsubscribe = onSnapshot(ref, (snap) => {
       if (!snap.exists()) { setPainel(null); return; }
       const data = snap.data();
       setPainel(data);
-      if (data.votacaoAtual?.votos && usuario.id) {
+
+      if (data.votacaoAtual?.votos && usuarioId) {
         const votos = data.votacaoAtual.votos;
-        const votoAtual = Object.values(votos).find(v => v.vereador_id === usuario.id);
+        const votoAtual = Object.values(votos).find(v => v.vereador_id === usuarioId);
         setVoto(votoAtual ? votoAtual.voto : "");
       } else {
         setVoto("");
       }
-      // Verifica se já pediu palavra
       if (data.pedidosTribuna && Array.isArray(data.pedidosTribuna)) {
-        setPedidoFeito(data.pedidosTribuna.some(p => p.id === usuario.id && p.status === "Pendente"));
+        setPedidoFeito(data.pedidosTribuna.some(p => p.id === usuarioId && p.status === "Pendente"));
       }
     });
     return () => { unsubscribe(); }
-  }, [usuario.id]);
+  }, [usuarioId]);
 
-  // ----- PEDIR PALAVRA -----
+  // ALERTA DE NOVO CHAT
+  useEffect(() => {
+    if (!parlamentar) return;
+    const chatRef = doc(db, "conversas", "sessaoAtiva");
+    const unsubscribe = onSnapshot(chatRef, (snap) => {
+      const mensagens = snap.exists() ? snap.data().mensagens || [] : [];
+      if (mensagens.length > 0) {
+        const ultima = mensagens[mensagens.length - 1];
+        // Só alerta se NÃO está na aba chat e a mensagem não é do usuário atual
+        if (aba !== "chat" && ultima.id !== parlamentar.id) {
+          setChatAlert(true);
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [parlamentar, aba]);
+
   const pedirPalavra = async () => {
+    if (!parlamentar) return;
     setEnviando(true);
     await updateDoc(doc(db, "painelAtivo", "ativo"), {
       pedidosTribuna: arrayUnion({
-        id: usuario.id,
-        nome: usuario.nome,
-        partido: usuario.partido,
-        foto: usuario.foto || "",
+        id: parlamentar.id,
+        nome: parlamentar.nome,
+        partido: parlamentar.partido,
+        foto: parlamentar.foto || "",
         horario: new Date().toISOString(),
         status: "Pendente"
       })
@@ -64,25 +86,24 @@ export default function SessaoAtivaParlamentar() {
     setEnviando(false);
   };
 
-  // ----- ENVIAR VOTO -----
   const votosValidos = ["Sim", "Não", "Abstenção"];
   const enviarVoto = async (escolha) => {
-    if (!votosValidos.includes(escolha)) return;
+    if (!votosValidos.includes(escolha) || !parlamentar) return;
     setEnviando(true);
     await updateDoc(doc(db, "painelAtivo", "ativo"), {
-      [`votacaoAtual.votos.${usuario.id}`]: {
-        vereador_id: usuario.id,
-        nome: usuario.nome,
-        partido: usuario.partido,
+      [`votacaoAtual.votos.${parlamentar.id}`]: {
+        vereador_id: parlamentar.id,
+        nome: parlamentar.nome,
+        partido: parlamentar.partido,
         voto: escolha,
-        foto: usuario.foto || "",
+        foto: parlamentar.foto || "",
         dataHora: new Date().toISOString(),
       },
     });
     setVoto(escolha);
     setEnviando(false);
   };
-  // Controle modal dupla confirmação de voto
+
   const jaVotou = voto === "Sim" || voto === "Não" || voto === "Abstenção";
   const handleVotar = (novoVoto) => {
     if (jaVotou && voto !== novoVoto) {
@@ -101,7 +122,6 @@ export default function SessaoAtivaParlamentar() {
   };
   const cancelarAlteracao = () => setModalConfirm({ exibir: false, etapa: 1, votoNovo: "" });
 
-  // ------ TABS -----
   const TABS = [
     { key: "votacao", label: "Votação" },
     { key: "tribuna", label: "Tribuna" },
@@ -109,25 +129,39 @@ export default function SessaoAtivaParlamentar() {
     { key: "chat", label: "Chat" },
   ];
 
-  if (!painel) return (
-    <div className="sessao-parlamentar-container">
-      <TopoInstitucional />
-      <div className="sessao-info"><h2>Sessão não iniciada</h2><p>Aguardando início da sessão...</p></div>
-    </div>
-  );
+  if (!parlamentar)
+    return (
+      <div className="sessao-parlamentar-container">
+        <TopoInstitucional />
+        <div className="sessao-info">
+          <h2>Parlamentar não encontrado</h2>
+          <p>Faça login novamente.</p>
+        </div>
+      </div>
+    );
 
-  // Info da sessão/matéria
-  const { votacaoAtual, titulo, data, hora, presidente, secretario, pedidosTribuna } = painel;
+  if (!painel)
+    return (
+      <div className="sessao-parlamentar-container">
+        <TopoInstitucional />
+        <div className="sessao-info"><h2>Sessão não iniciada</h2><p>Aguardando início da sessão...</p></div>
+      </div>
+    );
+
+  const { votacaoAtual, numeroSessaoLegislativa, numeroSessaoOrdinaria, modalidade, local, legislatura, legislaturaDescricao,
+    data, hora, presidente, secretario, mesaDiretora, parlamentares, pedidosTribuna, ataCompleta, ataPdfUrl, observacoes
+  } = painel;
+
   const materia = votacaoAtual?.materia || votacaoAtual?.titulo || "-";
   const autor = votacaoAtual?.autor || "-";
   const tipo = votacaoAtual?.tipo || "-";
   const statusSessao = painel.statusSessao || "-";
   const statusVotacao = (votacaoAtual?.status || "").toLowerCase();
   const habilitados = votacaoAtual?.habilitados || [];
-  const podeVotar = statusSessao === "Ativa" && (statusVotacao === "em_votacao" || statusVotacao === "votando") && habilitados.includes(usuario.id);
+  const podeVotar = statusSessao === "Ativa" && (statusVotacao === "em_votacao" || statusVotacao === "votando") && habilitados.includes(parlamentar.id);
 
   let msg = "";
-  if (!habilitados.includes(usuario.id)) {
+  if (!habilitados.includes(parlamentar.id)) {
     msg = "Você não está habilitado para votar nesta sessão. Procure a Mesa Diretora.";
   } else if (!(statusVotacao === "em_votacao" || statusVotacao === "votando")) {
     msg = "Aguardando abertura da votação.";
@@ -143,8 +177,17 @@ export default function SessaoAtivaParlamentar() {
           <button
             key={t.key}
             className={aba === t.key ? "tab-ativo" : ""}
-            onClick={() => setAba(t.key)}
-          >{t.label}</button>
+            onClick={() => {
+              setAba(t.key);
+              if (t.key === "chat") setChatAlert(false);
+            }}
+            style={{ position: "relative" }}
+          >
+            {t.label}
+            {t.key === "chat" && chatAlert && (
+              <span className="chat-alert-badge" />
+            )}
+          </button>
         ))}
       </div>
       <div className="sessao-parlamentar-bloco">
@@ -152,10 +195,10 @@ export default function SessaoAtivaParlamentar() {
         {aba === "votacao" && (
           <div>
             <div className="parlamentar-header">
-              <img src={usuario.foto || "/assets/default-parlamentar.png"} alt={usuario.nome} className="parlamentar-foto" />
+              <img src={parlamentar.foto || "/assets/default-parlamentar.png"} alt={parlamentar.nome} className="parlamentar-foto" />
               <div>
-                <div className="parlamentar-nome">{usuario.nome} {usuario.partido && <span className="parlamentar-partido">({usuario.partido})</span>}</div>
-                <div className="parlamentar-tipo">Perfil: {usuario.tipo}</div>
+                <div className="parlamentar-nome">{parlamentar.nome} {parlamentar.partido && <span className="parlamentar-partido">({parlamentar.partido})</span>}</div>
+                <div className="parlamentar-tipo">Perfil: {parlamentar.tipo || "-"}</div>
               </div>
             </div>
             <div className="sessao-info">
@@ -164,7 +207,8 @@ export default function SessaoAtivaParlamentar() {
               <p><b>Tipo:</b> {tipo}</p>
               <p><b>Autor:</b> {autor}</p>
               <p><b>Status:</b> <span className="status-votacao">{votacaoAtual?.status || "-"}</span></p>
-              <p><b>Sessão:</b> {titulo || "-"} | <b>Data:</b> {data || "-"} | <b>Hora:</b> {hora || "-"}</p>
+              <p><b>Sessão:</b> {numeroSessaoLegislativa || "-"} - Ordinária Nº {numeroSessaoOrdinaria || "-"} ({modalidade || "-"})</p>
+              <p><b>Data:</b> {data || "-"} | <b>Hora:</b> {hora || "-"}</p>
               <p><b>Presidente:</b> {presidente || "-"} | <b>Secretário:</b> {secretario || "-"}</p>
             </div>
             <div className="sessao-voto-bloco">
@@ -186,7 +230,8 @@ export default function SessaoAtivaParlamentar() {
             </div>
           </div>
         )}
-        {/* ABA TRIBUNA - PEDIR PALAVRA */}
+
+        {/* ABA TRIBUNA */}
         {aba === "tribuna" && (
           <div>
             <h2>Tribuna - Pedir Palavra</h2>
@@ -208,7 +253,6 @@ export default function SessaoAtivaParlamentar() {
                   </li>
                 ))}
             </ul>
-            {/* Mensagem pública (para painel público): */}
             <div className="tribuna-publico">
               <b>Painel Público:</b> {pedidosTribuna?.filter(p => p.status === "Pendente").length > 0
                 ? pedidosTribuna.filter(p => p.status === "Pendente").map(p => `${p.nome} pediu a palavra`).join(", ")
@@ -216,29 +260,81 @@ export default function SessaoAtivaParlamentar() {
             </div>
           </div>
         )}
+
         {/* ABA SESSÃO ATIVA */}
         {aba === "sessao" && (
           <div>
             <h2>Sessão Ativa</h2>
-            <p><b>Sessão:</b> {titulo || "-"}</p>
+            <p><b>Sessão:</b> {numeroSessaoLegislativa || "-"} - Ordinária Nº {numeroSessaoOrdinaria || "-"} ({modalidade || "-"})</p>
             <p><b>Data:</b> {data || "-"} | <b>Hora:</b> {hora || "-"}</p>
+            <p><b>Local:</b> {local || "-"} | <b>Legislatura:</b> {legislatura || "-"} <span style={{ color: "#888" }}>{legislaturaDescricao}</span></p>
             <p><b>Presidente:</b> {presidente || "-"} | <b>Secretário:</b> {secretario || "-"}</p>
-            <h3>Matéria em Votação:</h3>
-            <p><b>Título:</b> {materia}</p>
-            <p><b>Tipo:</b> {tipo}</p>
-            <p><b>Autor:</b> {autor}</p>
-            <h3>Resumo:</h3>
-            <p>{votacaoAtual?.descricao || "Sem resumo cadastrado."}</p>
-            {/* PDF/ATA (link fictício, ajuste para seu campo real) */}
-            {painel.ataPdfUrl && (
-              <a href={painel.ataPdfUrl} target="_blank" rel="noopener noreferrer" className="botao-voto">Baixar Ata em PDF</a>
+            <h3>Mesa Diretora</h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+              {(mesaDiretora || []).length === 0 && <span style={{ color: "#888" }}>Não informada</span>}
+              {(mesaDiretora || []).map((m, idx) => (
+                <div key={m.id || idx} style={{
+                  border: "1px solid #eee", borderRadius: 8, padding: "6px 14px", display: "flex", alignItems: "center", gap: 7,
+                  minWidth: 120, background: "#f7fafc"
+                }}>
+                  <img src={m.foto || "/assets/default-parlamentar.png"} alt={m.nome} style={{ width: 30, height: 30, borderRadius: "50%" }} />
+                  <span><b>{m.nome}</b><br /><span style={{ fontSize: 12, color: "#888" }}>{m.cargo}</span></span>
+                </div>
+              ))}
+            </div>
+            <h3 style={{marginTop:18}}>Parlamentares Presentes</h3>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 10 }}>
+              {(parlamentares || []).filter(p => p.presente).map((p, i) => (
+                <div key={p.id || i} style={{
+                  border: "1px solid #eee", borderRadius: 8, padding: "4px 12px", display: "flex", alignItems: "center", gap: 6,
+                  minWidth: 80, background: "#fafdff"
+                }}>
+                  <img src={p.foto || "/assets/default-parlamentar.png"} alt={p.nome} style={{ width: 26, height: 26, borderRadius: "50%" }} />
+                  <span>{p.nome} <span style={{ color: "#1854b4", fontWeight: 500 }}>{p.partido}</span></span>
+                </div>
+              ))}
+              {(!parlamentares || parlamentares.filter(p => p.presente).length === 0) && (
+                <span style={{ color: "#888" }}>Nenhum parlamentar presente</span>
+              )}
+            </div>
+            <h3>Matéria em Votação</h3>
+            {votacaoAtual ? (
+              <>
+                <p><b>Título:</b> {votacaoAtual.materia || votacaoAtual.titulo || "-"}</p>
+                <p><b>Tipo:</b> {votacaoAtual.tipo || "-"}</p>
+                <p><b>Autor:</b> {votacaoAtual.autor || "-"}</p>
+                <p><b>Descrição:</b> {votacaoAtual.descricao || "-"}</p>
+              </>
+            ) : (
+              <p style={{ color: "#888" }}>Nenhuma matéria em votação</p>
+            )}
+            <h3>Observações</h3>
+            <p>{observacoes || <span style={{ color: "#aaa" }}>Nenhuma</span>}</p>
+            {/* ATA (texto completo) */}
+            {ataCompleta && ataCompleta.trim() && (
+              <>
+                <h3>Ata Completa</h3>
+                <div style={{
+                  background: "#f8fafd", borderRadius: 8, padding: 12, marginBottom: 10,
+                  border: "1px solid #eee", maxHeight: 270, overflow: "auto", whiteSpace: "pre-wrap"
+                }}>
+                  {ataCompleta}
+                </div>
+              </>
+            )}
+            {/* PDF/ATA */}
+            {ataPdfUrl && (
+              <a href={ataPdfUrl} target="_blank" rel="noopener noreferrer" className="botao-voto" style={{ marginTop: 8, display: "inline-block" }}>
+                Baixar Ata em PDF
+              </a>
             )}
           </div>
         )}
-        {/* ABA CHAT – usa seu componente! */}
+
+        {/* ABA CHAT */}
         {aba === "chat" && (
           <div style={{marginTop: 12}}>
-            <Chat usuario={usuario} />
+            <Chat usuario={parlamentar} />
           </div>
         )}
       </div>
@@ -270,7 +366,7 @@ export default function SessaoAtivaParlamentar() {
   );
 }
 
-// Função utilitária para formatar datas/horários
+// Utilitário para datas
 function formatarData(str) {
   if (!str) return "";
   const d = new Date(str);
