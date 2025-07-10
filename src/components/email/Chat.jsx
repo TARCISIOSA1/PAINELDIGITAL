@@ -27,6 +27,7 @@ function getUsuarioLogado() {
 }
 
 export default function Chat() {
+  // Dados do usuário logado
   const usuarioLogado = getUsuarioLogado();
   const usuarioId = usuarioLogado?.id || "";
   const [usuarios, setUsuarios] = useState([]);
@@ -46,24 +47,52 @@ export default function Chat() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // === NOVO: Para badge/contagem de não lidas ===
-  const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({});
+  // Apagar grupo/conversa
+  async function apagarConversa(conversaId) {
+    if (!window.confirm("Tem certeza que deseja apagar este grupo/conversa? Essa ação não pode ser desfeita!")) return;
+    const mensagensRef = collection(db, "conversas", conversaId, "mensagens");
+    const mensagensSnap = await getDocs(mensagensRef);
+    const deletePromises = [];
+    mensagensSnap.forEach((mensagemDoc) => {
+      deletePromises.push(deleteDoc(doc(db, "conversas", conversaId, "mensagens", mensagemDoc.id)));
+    });
+    await Promise.all(deletePromises);
+    await deleteDoc(doc(db, "conversas", conversaId));
+    alert("Conversa/Grupo apagado com sucesso!");
+    setConversaAtiva(null);
+  }
 
-  // Buscar contatos (parlamentares)
+  // Limpar mensagens
+  async function limparMensagens(conversaId) {
+    if (!window.confirm("Tem certeza que deseja limpar todas as mensagens desta conversa?")) return;
+    const mensagensRef = collection(db, "conversas", conversaId, "mensagens");
+    const mensagensSnap = await getDocs(mensagensRef);
+    const deletePromises = [];
+    mensagensSnap.forEach((mensagemDoc) => {
+      deletePromises.push(deleteDoc(doc(db, "conversas", conversaId, "mensagens", mensagemDoc.id)));
+    });
+    await Promise.all(deletePromises);
+    alert("Mensagens apagadas com sucesso!");
+  }
+
+  // Buscar contatos (parlamentares!)
   useEffect(() => {
     const q = query(collection(db, "parlamentares"));
     const unsub = onSnapshot(q, (snapshot) => {
       const lista = [];
+      const onlineSet = new Set();
       snapshot.forEach(doc => {
         const data = doc.data();
         lista.push({ id: doc.id, ...data });
+        if (data.online) onlineSet.add(doc.id);
       });
       setUsuarios(lista);
+      setOnlineIds(onlineSet);
     });
     return () => unsub();
   }, []);
 
-  // Buscar conversas do usuário logado (e badge não lida)
+  // Buscar conversas do usuário logado
   useEffect(() => {
     if (!usuarioId) return setConversas([]);
     const q = query(
@@ -71,38 +100,12 @@ export default function Chat() {
       where("membros", "array-contains", usuarioId),
       orderBy("ultimaMensagemTimestamp", "desc")
     );
-    const unsub = onSnapshot(q, async (snapshot) => {
+    const unsub = onSnapshot(q, (snapshot) => {
       const lista = [];
-      const naoLidasObj = {};
-      for (const docu of snapshot.docs) {
-        const data = docu.data();
-        lista.push({ id: docu.id, ...data });
-
-        // Checa não lidas para o badge
-        let totalNaoLidas = 0;
-        const msgsSnap = await getDocs(
-          query(
-            collection(db, "conversas", docu.id, "mensagens"),
-            orderBy("timestamp", "asc")
-          )
-        );
-        const msgs = [];
-        msgsSnap.forEach((m) => msgs.push({ id: m.id, ...m.data() }));
-        // Lógica: última mensagem lida por esse usuário
-        const lidas = data.lidas || {};
-        const lastLidaId = lidas[usuarioId];
-        let achouLida = false;
-        for (let i = msgs.length - 1; i >= 0; i--) {
-          if (!achouLida && msgs[i].id === lastLidaId) {
-            achouLida = true;
-            break;
-          }
-          if (!achouLida && msgs[i].remetenteId !== usuarioId) totalNaoLidas++;
-        }
-        naoLidasObj[docu.id] = totalNaoLidas;
-      }
+      snapshot.forEach(doc => {
+        lista.push({ id: doc.id, ...doc.data() });
+      });
       setConversas(lista);
-      setNaoLidasPorConversa(naoLidasObj);
     });
     return () => unsub();
   }, [usuarioId]);
@@ -121,17 +124,9 @@ export default function Chat() {
         msgs.push({ id: doc.id, ...doc.data() });
       });
       setMensagens(msgs);
-
-      // Marcar como lidas ao abrir conversa
-      if (msgs.length > 0 && usuarioId) {
-        updateDoc(doc(db, "conversas", conversaAtiva.id), {
-          [`lidas.${usuarioId}`]: msgs[msgs.length - 1].id
-        });
-      }
     });
     return () => unsub();
-    // eslint-disable-next-line
-  }, [conversaAtiva, usuarioId]);
+  }, [conversaAtiva]);
 
   useEffect(() => {
     if (mensagensEndRef.current) {
@@ -189,7 +184,6 @@ export default function Chat() {
       criador: usuarioId,
       ultimaMensagemTexto: "",
       ultimaMensagemTimestamp: new Date(),
-      lidas: { [usuarioId]: "" }
     });
 
     const docRef = doc(db, "conversas", novoDoc.id);
@@ -207,7 +201,7 @@ export default function Chat() {
   async function enviarMensagem() {
     if (!conversaAtiva || mensagemTexto.trim() === "") return;
     const msgsRef = collection(db, "conversas", conversaAtiva.id, "mensagens");
-    const msgDoc = await addDoc(msgsRef, {
+    await addDoc(msgsRef, {
       remetenteId: usuarioId,
       tipo: "texto",
       texto: mensagemTexto.trim(),
@@ -217,7 +211,6 @@ export default function Chat() {
     await updateDoc(conversaDoc, {
       ultimaMensagemTexto: mensagemTexto.trim(),
       ultimaMensagemTimestamp: new Date(),
-      [`lidas.${usuarioId}`]: msgDoc.id
     });
     setMensagemTexto("");
   }
@@ -245,17 +238,12 @@ export default function Chat() {
     const refArq = storageRef(storage, caminho);
     await uploadBytes(refArq, file);
     const url = await getDownloadURL(refArq);
-    const msgDoc = await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
+    await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
       remetenteId: usuarioId,
       tipo: file.type.startsWith("image/") ? "imagem" : "arquivo",
       nomeArquivo: file.name,
       urlArquivo: url,
       timestamp: new Date(),
-    });
-    await updateDoc(doc(db, "conversas", conversaAtiva.id), {
-      ultimaMensagemTexto: file.name,
-      ultimaMensagemTimestamp: new Date(),
-      [`lidas.${usuarioId}`]: msgDoc.id
     });
     fileInputRef.current.value = "";
   }
@@ -263,6 +251,7 @@ export default function Chat() {
   // ==== GRAVAÇÃO DE ÁUDIO ====
   async function gravarAudio() {
     if (gravando) {
+      // Para a gravação
       mediaRecorderRef.current.stop();
       setGravando(false);
       return;
@@ -272,7 +261,10 @@ export default function Chat() {
       return;
     }
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorderRef.current = new window.MediaRecorder(stream);
+    // *** Para mais compatibilidade, salve em audio/wav (maior) ou audio/ogg, mas webm é padrão ***
+    mediaRecorderRef.current = new window.MediaRecorder(stream, {
+      mimeType: "audio/webm" // No futuro troque para mp3/mp4 se tiver backend para converter
+    });
     audioChunksRef.current = [];
     mediaRecorderRef.current.ondataavailable = (e) => {
       if (e.data.size > 0) audioChunksRef.current.push(e.data);
@@ -283,20 +275,16 @@ export default function Chat() {
       const refAudio = storageRef(storage, caminho);
       await uploadBytes(refAudio, blob);
       const url = await getDownloadURL(refAudio);
-      const msgDoc = await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
+      await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
         remetenteId: usuarioId,
         tipo: "audio",
         urlAudio: url,
         timestamp: new Date(),
       });
-      await updateDoc(doc(db, "conversas", conversaAtiva.id), {
-        ultimaMensagemTexto: "[Áudio]",
-        ultimaMensagemTimestamp: new Date(),
-        [`lidas.${usuarioId}`]: msgDoc.id
-      });
     };
     mediaRecorderRef.current.start();
     setGravando(true);
+    // Para gravação automaticamente após 30 segundos
     setTimeout(() => {
       if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
         mediaRecorderRef.current.stop();
@@ -305,6 +293,7 @@ export default function Chat() {
     }, 30000);
   }
 
+  // Caso não esteja logado
   if (!usuarioLogado || !usuarioId) {
     return (
       <div style={{ padding: 40, maxWidth: 400, margin: "60px auto", color: "#c00", fontWeight: "bold" }}>
@@ -342,7 +331,7 @@ export default function Chat() {
               <div>
                 <strong>{u.nome}</strong>
                 {u.numero && <span className="partido-numero"> - {u.numero}</span>}
-                {/* Online indicator (opcional) */}
+                {isOnline(u.id) && <span className="online-indicador">●</span>}
               </div>
             </div>
           ))}
@@ -360,18 +349,14 @@ export default function Chat() {
             } else if (conv.grupo === true) {
               nome = conv.nome || "Grupo sem nome";
             }
-            const naoLidas = naoLidasPorConversa[conv.id] || 0;
             return (
               <div
                 key={conv.id}
-                className={`conversa-item ${conversaAtiva && conversaAtiva.id === conv.id ? "ativa" : ""} ${naoLidas ? "nao-lida" : ""}`}
+                className={`conversa-item ${conversaAtiva && conversaAtiva.id === conv.id ? "ativa" : ""}`}
                 onClick={() => setConversaAtiva(conv)}
               >
                 <strong>{nome}</strong>
                 {conv.grupo === true && <span style={{ fontSize: 12, marginLeft: 8, color: "#888" }}>(Grupo)</span>}
-                {naoLidas > 0 && (
-                  <span className="badge-nao-lida">{naoLidas > 99 ? "99+" : naoLidas}</span>
-                )}
               </div>
             );
           })}
@@ -402,7 +387,7 @@ export default function Chat() {
                     checked={grupoParticipantes.has(u.id)}
                     onChange={() => toggleParticipante(u.id)}
                   />
-                  {u.nome}
+                  {u.nome} {isOnline(u.id) && <span className="online-indicador">●</span>}
                 </label>
               ))}
             </div>
@@ -427,11 +412,7 @@ export default function Chat() {
             <div style={{ margin: "10px 0" }}>
               <button
                 style={{ background: "#f22", color: "#fff", marginRight: 8, border: 0, padding: "6px 14px", borderRadius: 4 }}
-                onClick={() => {
-                  if (window.confirm("Tem certeza que deseja apagar este grupo/conversa? Essa ação não pode ser desfeita!")) {
-                    apagarConversa(conversaAtiva.id)
-                  }
-                }}
+                onClick={() => apagarConversa(conversaAtiva.id)}
               >
                 Apagar grupo/conversa
               </button>
@@ -446,6 +427,8 @@ export default function Chat() {
               {mensagens.map((msg) => {
                 const remetente = dadosRemetente(msg.remetenteId);
                 const isRemetente = msg.remetenteId === usuarioId;
+                // Detecta iPhone para aviso do áudio
+                const isIphone = typeof window !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
                 return (
                   <div
                     key={msg.id}
@@ -456,22 +439,66 @@ export default function Chat() {
                     )}
                     <div className="mensagem-texto">
                       {!isRemetente && <strong>{remetente.nome}</strong>}
+                      {/* MENSAGEM DE ÁUDIO */}
                       {msg.tipo === "audio" && msg.urlAudio &&
-                        <audio src={msg.urlAudio} controls style={{ width: 200 }} />
+                        <div>
+                          <audio src={msg.urlAudio} controls style={{ width: 200 }} />
+                          <div>
+                            <a
+                              href={msg.urlAudio}
+                              download="audio_msg.webm"
+                              style={{ color: "#1854b4", textDecoration: "underline", fontSize: 12 }}
+                            >
+                              ⬇️ Baixar áudio
+                            </a>
+                            {isIphone && (
+                              <span style={{ color: "#c00", fontSize: 12, marginLeft: 8 }}>
+                                Áudio pode não funcionar no iPhone.
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       }
+                      {/* ARQUIVOS */}
                       {msg.tipo === "arquivo" && msg.urlArquivo &&
                         <div>
-                          <a href={msg.urlArquivo} target="_blank" rel="noopener noreferrer">
+                          <a
+                            href={msg.urlArquivo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={msg.nomeArquivo || true}
+                            style={{ color: "#1854b4", textDecoration: "underline" }}
+                          >
                             📎 {msg.nomeArquivo}
                           </a>
                         </div>
                       }
+                      {/* IMAGEM */}
                       {msg.tipo === "imagem" && msg.urlArquivo &&
                         <div>
-                          <img src={msg.urlArquivo} alt={msg.nomeArquivo} style={{ maxWidth: 180, maxHeight: 180, borderRadius: 7, border: "1px solid #ccc" }} />
+                          <a
+                            href={msg.urlArquivo}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={msg.nomeArquivo || true}
+                            style={{ display: "inline-block" }}
+                          >
+                            <img
+                              src={msg.urlArquivo}
+                              alt={msg.nomeArquivo}
+                              style={{
+                                maxWidth: 180,
+                                maxHeight: 180,
+                                borderRadius: 7,
+                                border: "1px solid #ccc",
+                                display: "block",
+                              }}
+                            />
+                          </a>
                           <div style={{ fontSize: 12 }}>{msg.nomeArquivo}</div>
                         </div>
                       }
+                      {/* TEXTO */}
                       {(!msg.tipo || msg.tipo === "texto") && msg.texto &&
                         <p>{msg.texto}</p>
                       }
