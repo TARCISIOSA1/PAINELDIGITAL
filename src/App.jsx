@@ -225,7 +225,7 @@ function AppContent() {
       }}>
         <div style={{ display: "flex", alignItems: "center" }}>
           <img src="/assets/logo-plenario-digital.png" alt="Logo Plenário Digital" className="logo" style={{ height: 38, marginRight: 16 }} />
-          <span style={{ fontWeight: "bold", fontSize: 18 }}>PAINEL DIGITAL</span>
+          <span style={{ fontWeight: "bold", fontSize: 18 }}>PLENÁRIO DIGIT@L</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
           <span style={{
@@ -515,7 +515,7 @@ function AppContent() {
         </Routes>
       </main>
       <footer className="footer-institucional">
-        SA tecnologia, &copy; {new Date().getFullYear()} — Plenário Digit@L & Premium Legislativo, contato: 75 983310340 Goes 75 991897595 @ Araujo.
+        SA tecnologia.ME, &copy; {new Date().getFullYear()} — Plenário Digit@l, Premium Legislativo.ME: contato: 75 983310340 Goes 75 991897595 Araujo.
       </footer>
     </>
   );
