@@ -16,7 +16,7 @@ import { db, storage } from "../../firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import "./Chat.css";
 
-// Pega dados do usuário logado (id, nome, foto, etc)
+// Função para buscar o usuário logado do localStorage
 function getUsuarioLogado() {
   try {
     const obj = JSON.parse(localStorage.getItem("usuarioLogado"));
@@ -27,10 +27,10 @@ function getUsuarioLogado() {
 }
 
 export default function Chat() {
-  // Usuário logado
   const usuarioLogado = getUsuarioLogado();
   const usuarioId = usuarioLogado?.id || "";
   const [usuarios, setUsuarios] = useState([]);
+  const [onlineIds, setOnlineIds] = useState(new Set());
   const [conversas, setConversas] = useState([]);
   const [conversaAtiva, setConversaAtiva] = useState(null);
   const [mensagemTexto, setMensagemTexto] = useState("");
@@ -46,6 +46,9 @@ export default function Chat() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
+  // === NOVO: Para badge/contagem de não lidas ===
+  const [naoLidasPorConversa, setNaoLidasPorConversa] = useState({});
+
   // Buscar contatos (parlamentares)
   useEffect(() => {
     const q = query(collection(db, "parlamentares"));
@@ -60,7 +63,7 @@ export default function Chat() {
     return () => unsub();
   }, []);
 
-  // Buscar conversas do usuário logado
+  // Buscar conversas do usuário logado (e badge não lida)
   useEffect(() => {
     if (!usuarioId) return setConversas([]);
     const q = query(
@@ -68,12 +71,38 @@ export default function Chat() {
       where("membros", "array-contains", usuarioId),
       orderBy("ultimaMensagemTimestamp", "desc")
     );
-    const unsub = onSnapshot(q, (snapshot) => {
+    const unsub = onSnapshot(q, async (snapshot) => {
       const lista = [];
-      snapshot.forEach(doc => {
-        lista.push({ id: doc.id, ...doc.data() });
-      });
+      const naoLidasObj = {};
+      for (const docu of snapshot.docs) {
+        const data = docu.data();
+        lista.push({ id: docu.id, ...data });
+
+        // Checa não lidas para o badge
+        let totalNaoLidas = 0;
+        const msgsSnap = await getDocs(
+          query(
+            collection(db, "conversas", docu.id, "mensagens"),
+            orderBy("timestamp", "asc")
+          )
+        );
+        const msgs = [];
+        msgsSnap.forEach((m) => msgs.push({ id: m.id, ...m.data() }));
+        // Lógica: última mensagem lida por esse usuário
+        const lidas = data.lidas || {};
+        const lastLidaId = lidas[usuarioId];
+        let achouLida = false;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+          if (!achouLida && msgs[i].id === lastLidaId) {
+            achouLida = true;
+            break;
+          }
+          if (!achouLida && msgs[i].remetenteId !== usuarioId) totalNaoLidas++;
+        }
+        naoLidasObj[docu.id] = totalNaoLidas;
+      }
       setConversas(lista);
+      setNaoLidasPorConversa(naoLidasObj);
     });
     return () => unsub();
   }, [usuarioId]);
@@ -92,9 +121,17 @@ export default function Chat() {
         msgs.push({ id: doc.id, ...doc.data() });
       });
       setMensagens(msgs);
+
+      // Marcar como lidas ao abrir conversa
+      if (msgs.length > 0 && usuarioId) {
+        updateDoc(doc(db, "conversas", conversaAtiva.id), {
+          [`lidas.${usuarioId}`]: msgs[msgs.length - 1].id
+        });
+      }
     });
     return () => unsub();
-  }, [conversaAtiva]);
+    // eslint-disable-next-line
+  }, [conversaAtiva, usuarioId]);
 
   useEffect(() => {
     if (mensagensEndRef.current) {
@@ -152,6 +189,7 @@ export default function Chat() {
       criador: usuarioId,
       ultimaMensagemTexto: "",
       ultimaMensagemTimestamp: new Date(),
+      lidas: { [usuarioId]: "" }
     });
 
     const docRef = doc(db, "conversas", novoDoc.id);
@@ -169,7 +207,7 @@ export default function Chat() {
   async function enviarMensagem() {
     if (!conversaAtiva || mensagemTexto.trim() === "") return;
     const msgsRef = collection(db, "conversas", conversaAtiva.id, "mensagens");
-    await addDoc(msgsRef, {
+    const msgDoc = await addDoc(msgsRef, {
       remetenteId: usuarioId,
       tipo: "texto",
       texto: mensagemTexto.trim(),
@@ -179,6 +217,7 @@ export default function Chat() {
     await updateDoc(conversaDoc, {
       ultimaMensagemTexto: mensagemTexto.trim(),
       ultimaMensagemTimestamp: new Date(),
+      [`lidas.${usuarioId}`]: msgDoc.id
     });
     setMensagemTexto("");
   }
@@ -194,6 +233,10 @@ export default function Chat() {
     return usuarios.find(u => u.id === id) || { nome: "Usuário", foto: "" };
   }
 
+  function isOnline(id) {
+    return onlineIds.has(id);
+  }
+
   // ==== ENVIO DE ARQUIVO ====
   async function handleArquivoSelecionado(e) {
     const file = e.target.files[0];
@@ -202,12 +245,17 @@ export default function Chat() {
     const refArq = storageRef(storage, caminho);
     await uploadBytes(refArq, file);
     const url = await getDownloadURL(refArq);
-    await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
+    const msgDoc = await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
       remetenteId: usuarioId,
       tipo: file.type.startsWith("image/") ? "imagem" : "arquivo",
       nomeArquivo: file.name,
       urlArquivo: url,
       timestamp: new Date(),
+    });
+    await updateDoc(doc(db, "conversas", conversaAtiva.id), {
+      ultimaMensagemTexto: file.name,
+      ultimaMensagemTimestamp: new Date(),
+      [`lidas.${usuarioId}`]: msgDoc.id
     });
     fileInputRef.current.value = "";
   }
@@ -215,9 +263,7 @@ export default function Chat() {
   // ==== GRAVAÇÃO DE ÁUDIO ====
   async function gravarAudio() {
     if (gravando) {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
+      mediaRecorderRef.current.stop();
       setGravando(false);
       return;
     }
@@ -225,49 +271,40 @@ export default function Chat() {
       alert("Navegador não suporta gravação de áudio.");
       return;
     }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new window.MediaRecorder(stream);
-      audioChunksRef.current = [];
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-      mediaRecorderRef.current.onstop = async () => {
-        if (!audioChunksRef.current.length) {
-          alert("Nenhum áudio gravado. Tente novamente.");
-          return;
-        }
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const caminho = `chat/${conversaAtiva.id}/${Date.now()}_audio.webm`;
-        const refAudio = storageRef(storage, caminho);
-        await uploadBytes(refAudio, blob);
-        const url = await getDownloadURL(refAudio);
-        await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
-          remetenteId: usuarioId,
-          tipo: "audio",
-          urlAudio: url,
-          timestamp: new Date(),
-        });
-      };
-      mediaRecorderRef.current.start();
-      setGravando(true);
-      setTimeout(() => {
-        if (
-          mediaRecorderRef.current &&
-          mediaRecorderRef.current.state === "recording"
-        ) {
-          mediaRecorderRef.current.stop();
-          setGravando(false);
-        }
-      }, 30000);
-    } catch (err) {
-      alert("Não foi possível acessar o microfone.");
-    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaRecorderRef.current = new window.MediaRecorder(stream);
+    audioChunksRef.current = [];
+    mediaRecorderRef.current.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunksRef.current.push(e.data);
+    };
+    mediaRecorderRef.current.onstop = async () => {
+      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+      const caminho = `chat/${conversaAtiva.id}/${Date.now()}_audio.webm`;
+      const refAudio = storageRef(storage, caminho);
+      await uploadBytes(refAudio, blob);
+      const url = await getDownloadURL(refAudio);
+      const msgDoc = await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
+        remetenteId: usuarioId,
+        tipo: "audio",
+        urlAudio: url,
+        timestamp: new Date(),
+      });
+      await updateDoc(doc(db, "conversas", conversaAtiva.id), {
+        ultimaMensagemTexto: "[Áudio]",
+        ultimaMensagemTimestamp: new Date(),
+        [`lidas.${usuarioId}`]: msgDoc.id
+      });
+    };
+    mediaRecorderRef.current.start();
+    setGravando(true);
+    setTimeout(() => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+        setGravando(false);
+      }
+    }, 30000);
   }
 
-  // Caso não esteja logado
   if (!usuarioLogado || !usuarioId) {
     return (
       <div style={{ padding: 40, maxWidth: 400, margin: "60px auto", color: "#c00", fontWeight: "bold" }}>
@@ -303,10 +340,9 @@ export default function Chat() {
             >
               <img src={u.foto || "/default-avatar.png"} alt={u.nome} className="foto-contato" />
               <div>
-                <strong style={{ fontSize: 15, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", display: "inline-block", whiteSpace: "nowrap" }}>
-                  {u.nome}
-                </strong>
+                <strong>{u.nome}</strong>
                 {u.numero && <span className="partido-numero"> - {u.numero}</span>}
+                {/* Online indicator (opcional) */}
               </div>
             </div>
           ))}
@@ -324,14 +360,18 @@ export default function Chat() {
             } else if (conv.grupo === true) {
               nome = conv.nome || "Grupo sem nome";
             }
+            const naoLidas = naoLidasPorConversa[conv.id] || 0;
             return (
               <div
                 key={conv.id}
-                className={`conversa-item ${conversaAtiva && conversaAtiva.id === conv.id ? "ativa" : ""}`}
+                className={`conversa-item ${conversaAtiva && conversaAtiva.id === conv.id ? "ativa" : ""} ${naoLidas ? "nao-lida" : ""}`}
                 onClick={() => setConversaAtiva(conv)}
               >
                 <strong>{nome}</strong>
                 {conv.grupo === true && <span style={{ fontSize: 12, marginLeft: 8, color: "#888" }}>(Grupo)</span>}
+                {naoLidas > 0 && (
+                  <span className="badge-nao-lida">{naoLidas > 99 ? "99+" : naoLidas}</span>
+                )}
               </div>
             );
           })}
@@ -383,10 +423,15 @@ export default function Chat() {
                   : conversaAtiva.nome || "Grupo sem nome"}
               </h3>
             </div>
+            {/* BOTÕES DE AÇÃO */}
             <div style={{ margin: "10px 0" }}>
               <button
                 style={{ background: "#f22", color: "#fff", marginRight: 8, border: 0, padding: "6px 14px", borderRadius: 4 }}
-                onClick={() => apagarConversa(conversaAtiva.id)}
+                onClick={() => {
+                  if (window.confirm("Tem certeza que deseja apagar este grupo/conversa? Essa ação não pode ser desfeita!")) {
+                    apagarConversa(conversaAtiva.id)
+                  }
+                }}
               >
                 Apagar grupo/conversa
               </button>
@@ -410,12 +455,10 @@ export default function Chat() {
                       <img src={remetente.foto} alt={remetente.nome} className="foto-remetente" />
                     )}
                     <div className="mensagem-texto">
-                      {!isRemetente && <strong style={{ fontSize: 13, maxWidth: 85, overflow: "hidden", textOverflow: "ellipsis", display: "inline-block", whiteSpace: "nowrap" }}>{remetente.nome}</strong>}
-                      {/* Áudio */}
+                      {!isRemetente && <strong>{remetente.nome}</strong>}
                       {msg.tipo === "audio" && msg.urlAudio &&
                         <audio src={msg.urlAudio} controls style={{ width: 200 }} />
                       }
-                      {/* Arquivo */}
                       {msg.tipo === "arquivo" && msg.urlArquivo &&
                         <div>
                           <a href={msg.urlArquivo} target="_blank" rel="noopener noreferrer">
@@ -423,16 +466,14 @@ export default function Chat() {
                           </a>
                         </div>
                       }
-                      {/* Imagem */}
                       {msg.tipo === "imagem" && msg.urlArquivo &&
                         <div>
-                          <img src={msg.urlArquivo} alt={msg.nomeArquivo} style={{ maxWidth: 120, maxHeight: 120, borderRadius: 7, border: "1px solid #ccc" }} />
+                          <img src={msg.urlArquivo} alt={msg.nomeArquivo} style={{ maxWidth: 180, maxHeight: 180, borderRadius: 7, border: "1px solid #ccc" }} />
                           <div style={{ fontSize: 12 }}>{msg.nomeArquivo}</div>
                         </div>
                       }
-                      {/* Texto */}
                       {(!msg.tipo || msg.tipo === "texto") && msg.texto &&
-                        <p style={{ margin: 0 }}>{msg.texto}</p>
+                        <p>{msg.texto}</p>
                       }
                     </div>
                   </div>
@@ -440,6 +481,7 @@ export default function Chat() {
               })}
               <div ref={mensagensEndRef}></div>
             </div>
+            {/* FORM DE ENVIO */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -447,6 +489,7 @@ export default function Chat() {
               }}
               className="form-enviar-msg"
             >
+              {/* INPUT HIDDEN DE ARQUIVO */}
               <input
                 type="file"
                 accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
@@ -454,26 +497,26 @@ export default function Chat() {
                 ref={fileInputRef}
                 onChange={handleArquivoSelecionado}
               />
+              {/* BOTÃO DE ARQUIVO */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current.click()}
                 title="Enviar arquivo"
                 style={{ marginRight: 8 }}
               >📎</button>
-              {window.MediaRecorder && (
-                <button
-                  type="button"
-                  onClick={gravarAudio}
-                  title={gravando ? "Parar gravação" : "Gravar áudio"}
-                  style={{ marginRight: 8, color: gravando ? "#c00" : "#222" }}
-                >{gravando ? "⏹️" : "🎤"}</button>
-              )}
+              {/* BOTÃO DE ÁUDIO */}
+              <button
+                type="button"
+                onClick={gravarAudio}
+                title={gravando ? "Parar gravação" : "Gravar áudio"}
+                style={{ marginRight: 8, color: gravando ? "#c00" : "#222" }}
+              >{gravando ? "⏹️" : "🎤"}</button>
+              {/* TEXTO */}
               <input
                 type="text"
                 placeholder="Digite sua mensagem..."
                 value={mensagemTexto}
                 onChange={(e) => setMensagemTexto(e.target.value)}
-                style={{ maxWidth: 150 }}
               />
               <button type="submit" disabled={mensagemTexto.trim() === ""}>Enviar</button>
             </form>
