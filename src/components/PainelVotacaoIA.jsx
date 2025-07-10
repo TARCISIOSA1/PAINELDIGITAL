@@ -183,13 +183,7 @@ export default function PainelVotacaoIA() {
         <div className={styles.painelBlocoInfo}>
           <div><b>Data:</b> {dados?.data || "-"} <b>Hora:</b> {dados?.hora || "-"}</div>
           <div><b>Local:</b> {dados?.local || "-"}</div>
-          <div>
-            <b>Legislatura:</b> {dados?.legislatura || "—"}
-          </div>
-          <div>
-            <b>Sessão Legislativa:</b> {dados?.sessaoLegislativa || "—"}
-          </div>
-          <div>
+                  <div>
             <b>Status:</b>{" "}
             <span className={`status-tag status-${(dados?.statusSessao || "").toLowerCase()}`}>{dados?.statusSessao || "-"}</span>
           </div>
