@@ -108,6 +108,7 @@ async function salvarPainelAtivoCompleto({
 }
 
 export default function Votacao() {
+   console.log("VERSÃO NOVA - TESTE TRANSFERÊNCIA ATIVA");
   // ----------------------- ESTADOS PRINCIPAIS ----------------------
   const [aba, setAba] = useState("Controle de Sessão");
   const [sessaoAtiva, setSessaoAtiva] = useState(null);
