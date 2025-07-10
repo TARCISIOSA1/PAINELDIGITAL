@@ -14,14 +14,11 @@ export default function SessaoAtivaParlamentar() {
   const [aba, setAba] = useState("votacao");
   const [enviando, setEnviando] = useState(false);
 
-  // Pedir palavra
-  const [pedidoFeito, setPedidoFeito] = useState(false);
+  // Badge alerta chat
+  const [chatAlert, setChatAlert] = useState(false);
 
   // Modal de confirmação de voto
   const [modalConfirm, setModalConfirm] = useState({ exibir: false, etapa: 1, votoNovo: "" });
-
-  // Badge alerta chat
-  const [chatAlert, setChatAlert] = useState(false);
 
   useEffect(() => {
     if (!usuarioId) return;
@@ -46,9 +43,6 @@ export default function SessaoAtivaParlamentar() {
       } else {
         setVoto("");
       }
-      if (data.pedidosTribuna && Array.isArray(data.pedidosTribuna)) {
-        setPedidoFeito(data.pedidosTribuna.some(p => p.id === usuarioId && p.status === "Pendente"));
-      }
     });
     return () => { unsubscribe(); }
   }, [usuarioId]);
@@ -61,7 +55,6 @@ export default function SessaoAtivaParlamentar() {
       const mensagens = snap.exists() ? snap.data().mensagens || [] : [];
       if (mensagens.length > 0) {
         const ultima = mensagens[mensagens.length - 1];
-        // Só alerta se NÃO está na aba chat e a mensagem não é do usuário atual
         if (aba !== "chat" && ultima.id !== parlamentar.id) {
           setChatAlert(true);
         }
@@ -70,9 +63,14 @@ export default function SessaoAtivaParlamentar() {
     return () => unsubscribe();
   }, [parlamentar, aba]);
 
+  // PEDIDOS DE FALA - sempre do painelAtivo
+  const pedidosTribuna = painel?.pedidosTribuna || [];
+
+  // Função: pedir palavra
   const pedirPalavra = async () => {
     if (!parlamentar) return;
     setEnviando(true);
+    // Salva como "Em Análise"
     await updateDoc(doc(db, "painelAtivo", "ativo"), {
       pedidosTribuna: arrayUnion({
         id: parlamentar.id,
@@ -80,12 +78,13 @@ export default function SessaoAtivaParlamentar() {
         partido: parlamentar.partido,
         foto: parlamentar.foto || "",
         horario: new Date().toISOString(),
-        status: "Pendente"
+        status: "Em Análise"
       })
     });
     setEnviando(false);
   };
 
+  // Votação
   const votosValidos = ["Sim", "Não", "Abstenção"];
   const enviarVoto = async (escolha) => {
     if (!votosValidos.includes(escolha) || !parlamentar) return;
@@ -103,7 +102,6 @@ export default function SessaoAtivaParlamentar() {
     setVoto(escolha);
     setEnviando(false);
   };
-
   const jaVotou = voto === "Sim" || voto === "Não" || voto === "Abstenção";
   const handleVotar = (novoVoto) => {
     if (jaVotou && voto !== novoVoto) {
@@ -149,7 +147,7 @@ export default function SessaoAtivaParlamentar() {
     );
 
   const { votacaoAtual, numeroSessaoLegislativa, numeroSessaoOrdinaria, modalidade, local, legislatura, legislaturaDescricao,
-    data, hora, presidente, secretario, mesaDiretora, parlamentares, pedidosTribuna, ataCompleta, ataPdfUrl, observacoes
+    data, hora, presidente, secretario, mesaDiretora, parlamentares, ataCompleta, ataPdfUrl, observacoes
   } = painel;
 
   const materia = votacaoAtual?.materia || votacaoAtual?.titulo || "-";
@@ -168,6 +166,9 @@ export default function SessaoAtivaParlamentar() {
   } else if (jaVotou) {
     msg = "Seu voto já foi registrado! Caso deseje, é possível alterar até o final da votação.";
   }
+
+  // Bloco para o pedido de fala (um só por parlamentar)
+  const meuPedido = (pedidosTribuna || []).find(p => p.id === parlamentar.id);
 
   return (
     <div className="sessao-parlamentar-container">
@@ -235,29 +236,99 @@ export default function SessaoAtivaParlamentar() {
         {aba === "tribuna" && (
           <div>
             <h2>Tribuna - Pedir Palavra</h2>
-            <div style={{ margin: "18px 0" }}>
-              {pedidoFeito ? (
-                <div className="aviso">Você já pediu a palavra e está aguardando aceitação.</div>
-              ) : (
-                <button className="botao-voto" onClick={pedirPalavra} disabled={enviando}>✋ Pedir Palavra</button>
-              )}
-            </div>
-            <h3>Pedidos Pendentes:</h3>
+            {/* Pedido do próprio parlamentar */}
+            {(() => {
+              if (!meuPedido) {
+                return (
+                  <button className="botao-voto" onClick={pedirPalavra} disabled={enviando}>
+                    ✋ Pedir Palavra
+                  </button>
+                );
+              }
+              if (meuPedido.status === "Em Análise") {
+                return (
+                  <div className="aviso" style={{background:'#f9f0c7', color:'#b48612'}}>
+                    Seu pedido está <b>em análise</b> pela Mesa Diretora.<br/>Aguarde ser aceito ou rejeitado.
+                  </div>
+                );
+              }
+              if (meuPedido.status === "Aceito") {
+                return (
+                  <div className="aviso" style={{background:'#eaf3ff', color:'#1854b4'}}>
+                    Pedido aceito! Você já foi incluído na lista de oradores da tribuna.
+                  </div>
+                );
+              }
+              if (meuPedido.status === "Rejeitado") {
+                return (
+                  <div className="aviso" style={{background:'#ffeaea', color:'#b02525'}}>
+                    Seu pedido para falar na tribuna foi <b>rejeitado</b> pela Mesa Diretora.
+                  </div>
+                );
+              }
+              return null;
+            })()}
+
+            {/* Lista de pedidos em análise */}
+            <h3 style={{marginTop:24, marginBottom:10}}>Pedidos em Análise</h3>
             <ul>
               {(pedidosTribuna || [])
-                .filter(p => p.status === "Pendente")
+                .filter(p => p.status === "Em Análise")
                 .map((p, i) => (
                   <li key={p.id || i}>
                     <img src={p.foto || "/assets/default-parlamentar.png"} alt={p.nome} style={{ width: 28, borderRadius: "50%", marginRight: 8 }} />
                     <b>{p.nome}</b> {p.partido ? <span>({p.partido})</span> : null} - <span>{formatarData(p.horario)}</span>
                   </li>
                 ))}
+              {(!pedidosTribuna || pedidosTribuna.filter(p => p.status === "Em Análise").length === 0) && (
+                <li style={{color:'#aaa'}}>Nenhum pedido em análise.</li>
+              )}
             </ul>
             <div className="tribuna-publico">
-              <b>Painel Público:</b> {pedidosTribuna?.filter(p => p.status === "Pendente").length > 0
-                ? pedidosTribuna.filter(p => p.status === "Pendente").map(p => `${p.nome} pediu a palavra`).join(", ")
+              <b>Painel Público:</b> {pedidosTribuna?.filter(p => p.status === "Em Análise").length > 0
+                ? pedidosTribuna.filter(p => p.status === "Em Análise").map(p => `${p.nome} pediu a palavra`).join(", ")
                 : "Nenhum pedido de palavra no momento."}
             </div>
+
+            {/* Lista de Oradores da Tribuna */}
+            <h3 style={{marginTop:32}}>Oradores da Tribuna</h3>
+            {painel.tribunaAtual && painel.tribunaAtual.oradores && painel.tribunaAtual.oradores.length > 0 ? (
+              <table style={{ width: "100%", marginBottom: 18, background: "#f9fbfe", borderRadius: 8, overflow: "hidden", fontSize: "1rem" }}>
+                <thead>
+                  <tr style={{ background: "#f0f4fa" }}>
+                    <th style={{ padding: "6px 3px" }}>Ordem</th>
+                    <th style={{ padding: "6px 3px" }}>Nome</th>
+                    <th style={{ padding: "6px 3px" }}>Partido</th>
+                    <th style={{ padding: "6px 3px" }}>Tempo (s)</th>
+                    <th style={{ padding: "6px 3px" }}>Saldo</th>
+                    <th style={{ padding: "6px 3px" }}>Fala</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {painel.tribunaAtual.oradores.map((o, i) => (
+                    <tr key={o.id || i} style={{
+                      background: painel.tribunaAtual.oradorAtivoIdx === i ? "#c2e5ff" : "transparent",
+                      fontWeight: painel.tribunaAtual.oradorAtivoIdx === i ? "bold" : "normal"
+                    }}>
+                      <td style={{ textAlign: "center" }}>{o.ordem ?? i + 1}</td>
+                      <td>
+                        <img src={o.foto || "/assets/default-parlamentar.png"} alt={o.nome} style={{ width: 22, height: 22, borderRadius: "50%", verticalAlign: "middle", marginRight: 6 }} />
+                        {o.nome}
+                        {painel.tribunaAtual.oradorAtivoIdx === i && (
+                          <span style={{ color: "#0b57d0", fontWeight: 700, marginLeft: 6 }}>[Falando]</span>
+                        )}
+                      </td>
+                      <td>{o.partido}</td>
+                      <td style={{ textAlign: "center" }}>{o.tempoFala ?? "-"}</td>
+                      <td style={{ textAlign: "center" }}>{o.saldo ?? "0"}</td>
+                      <td>{o.fala ? <span title={o.fala}>{o.fala.slice(0, 30)}{o.fala.length > 30 ? "..." : ""}</span> : <span style={{ color: "#999" }}>-</span>}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ color: "#888", marginBottom: 16 }}>Nenhum orador inscrito na tribuna.</div>
+            )}
           </div>
         )}
 
@@ -366,7 +437,6 @@ export default function SessaoAtivaParlamentar() {
   );
 }
 
-// Utilitário para datas
 function formatarData(str) {
   if (!str) return "";
   const d = new Date(str);
