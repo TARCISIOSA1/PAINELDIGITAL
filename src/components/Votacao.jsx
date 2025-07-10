@@ -187,7 +187,6 @@ export default function Votacao() {
         setNumeroSessaoOrdinaria(data.numeroSessaoOrdinaria || 0);
         setNumeroSessaoLegislativa(data.numeroSessaoLegislativa || 0);
         setHabilitados(data.habilitados || []);
-        setVereadores(data.parlamentares || []);
         setMaterias(data.ordemDoDia || []);
         setTipoVotacao(data.tipoVotacao || "Simples");
         setModalidade(data.modalidade || "Unica");
