@@ -1,300 +1,313 @@
 .sessao-parlamentar-container {
-  max-width: 950px;
-  margin: 0 auto;
+  max-width: 900px;
+  margin: 0 auto 30px auto;
   background: #fff;
-  border-radius: 18px;
+  border-radius: 12px;
   box-shadow: 0 2px 16px #0001;
-  min-height: 100vh;
-  padding: 0 0 24px 0;
+  padding: 10px 0 20px 0;
+  min-height: 85vh;
+  font-family: "Segoe UI", "Arial", sans-serif;
+  position: relative;
 }
-@media (max-width: 1000px) {
+
+@media (max-width: 1024px) {
   .sessao-parlamentar-container {
-    max-width: 100vw;
-    border-radius: 0;
-    box-shadow: none;
-    padding: 0;
+    max-width: 98vw;
+    min-height: 90vh;
+    padding: 0 2vw 24px 2vw;
   }
 }
 
+@media (max-width: 700px) {
+  .sessao-parlamentar-container {
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+    padding: 0 2vw 20vw 2vw;
+  }
+}
+
+/* TABS */
 .aba-tabs {
   display: flex;
-  flex-wrap: wrap;
-  border-bottom: 2px solid #e7eaf1;
-  background: #f6f8fc;
-  padding-left: 0;
-  margin-bottom: 0;
+  gap: 8px;
+  justify-content: flex-start;
+  margin: 0 0 18px 0;
+  border-bottom: 2px solid #f4f7fa;
   overflow-x: auto;
 }
 .aba-tabs button {
-  border: none;
-  outline: none;
   background: none;
-  font-size: 1.13rem;
-  font-weight: 700;
+  border: none;
+  font-weight: 500;
   color: #555;
-  padding: 13px 24px 10px 24px;
-  margin-right: 2px;
+  font-size: 1.07rem;
+  padding: 10px 16px 9px 16px;
+  border-bottom: 2.2px solid transparent;
   cursor: pointer;
-  border-bottom: 3px solid transparent;
+  transition: 0.14s;
+  outline: none;
+  min-width: 84px;
   position: relative;
-  transition: 0.15s;
-  border-radius: 12px 12px 0 0;
-  white-space: nowrap;
-  min-width: 98px;
 }
-.aba-tabs button.tab-ativo {
+.aba-tabs .tab-ativo,
+.aba-tabs button:focus {
+  border-bottom: 2.5px solid #1854b4;
   color: #1854b4;
-  background: #fff;
-  border-bottom: 3px solid #1854b4;
-}
-.aba-tabs button:hover:not(.tab-ativo) {
-  background: #f0f4fa;
-  color: #1854b4;
+  background: #f7faff;
+  font-weight: 600;
 }
 .chat-alert-badge {
   display: inline-block;
-  width: 10px; height: 10px;
-  background: #d00;
+  background: #e02525;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   position: absolute;
-  top: 10px; right: 10px;
-  border: 2px solid #fff;
-  box-shadow: 0 0 2px #0005;
-  animation: pulse-badge 1s infinite;
-}
-@keyframes pulse-badge {
-  0% { box-shadow: 0 0 0px #d003; }
-  60% { box-shadow: 0 0 8px #d009; }
-  100% { box-shadow: 0 0 0px #d003; }
+  top: 7px;
+  right: 5px;
+  border: 2.5px solid #fff;
 }
 
-.sessao-parlamentar-bloco {
-  margin: 0 auto;
-  max-width: 950px;
-  background: #fff;
-  border-radius: 10px;
-  padding: 18px 16px 18px 16px;
-}
-@media (max-width: 700px) {
-  .sessao-parlamentar-bloco {
-    padding: 8px 2vw 14px 2vw;
-    border-radius: 0;
-  }
-}
-
+/* HEADER PARLAMENTAR */
 .parlamentar-header {
   display: flex;
   align-items: center;
-  gap: 13px;
-  margin-bottom: 16px;
+  gap: 15px;
+  margin: 12px 0 15px 0;
 }
 .parlamentar-foto {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid #eaf3ff;
+  width: 58px;
+  height: 58px;
   object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid #e2e9f6;
+  background: #f3f5f8;
 }
 .parlamentar-nome {
-  font-size: 1.14rem;
   font-weight: 700;
-  color: #1854b4;
-  margin-bottom: 2px;
+  font-size: 1.16rem;
 }
 .parlamentar-partido {
-  font-size: 1rem;
-  color: #555;
-  margin-left: 7px;
+  color: #1854b4;
   font-weight: 500;
+  margin-left: 3px;
 }
 .parlamentar-tipo {
-  font-size: 0.98rem;
-  color: #888;
+  font-size: 0.99rem;
+  color: #777;
+  margin-top: 2px;
 }
 
+/* INFO BLOCO */
 .sessao-info {
   background: #f8fafd;
-  border-radius: 12px;
-  padding: 13px 10px 8px 10px;
-  margin-bottom: 14px;
-  border: 1px solid #eef2fb;
+  border-radius: 9px;
+  padding: 13px 15px 8px 15px;
+  margin-bottom: 18px;
+  font-size: 1.01rem;
 }
-.sessao-info h2 {
-  margin-top: 0;
-  margin-bottom: 7px;
-  color: #1a4297;
-  font-size: 1.12rem;
-  font-weight: 700;
+.status-votacao {
+  color: #1258b4;
+  font-weight: 600;
+}
+.materia-resumo {
+  background: #eaf2fb;
+  color: #0a2857;
+  border-left: 4px solid #1854b4;
+  border-radius: 6px;
+  padding: 7px 11px;
+  margin-bottom: 8px;
+  margin-top: 2px;
+  font-size: 0.98rem;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .sessao-voto-bloco {
-  margin-top: 7px;
-  background: #f8fafd;
-  border-radius: 11px;
-  padding: 11px 9px 10px 9px;
-  border: 1px solid #e8eefc;
-  box-shadow: 0 1px 8px #1a42970c;
+  margin-top: 12px;
+  margin-bottom: 18px;
 }
 .voto-opcoes {
   display: flex;
-  gap: 11px;
-  margin-bottom: 7px;
+  gap: 10px;
+  margin-bottom: 10px;
   flex-wrap: wrap;
-  align-items: center;
 }
 .botao-voto {
-  background: #1854b4;
-  color: #fff;
+  padding: 9px 15px;
+  border-radius: 8px;
   border: none;
-  border-radius: 7px;
-  padding: 10px 18px;
-  font-size: 1.08rem;
+  background: #eaf2fb;
+  color: #1854b4;
   font-weight: 600;
-  margin-right: 6px;
-  margin-bottom: 7px;
+  font-size: 1.07rem;
   cursor: pointer;
-  transition: 0.18s;
-  box-shadow: 0 2px 6px #1854b41a;
+  transition: 0.13s;
+  margin-bottom: 3px;
+  box-shadow: 0 1px 6px #0001;
 }
 .botao-voto.ativo, .botao-voto:active {
-  background: #297f43;
+  background: #1854b4;
   color: #fff;
+  font-weight: 700;
+  outline: none;
+  box-shadow: 0 2px 6px #0a285715;
 }
-.botao-voto:disabled {
-  background: #e4e9f0;
-  color: #7a8db1;
-  cursor: not-allowed;
-}
+.botao-voto-sim.ativo { background: #39b564 !important; color: #fff !important; }
+.botao-voto-nao.ativo { background: #e02525 !important; color: #fff !important; }
+.botao-voto-abstencao.ativo { background: #d2bc00 !important; color: #fff !important; }
 .voto-mensagem {
-  margin: 7px 0 5px 0;
-  font-size: 1rem;
-  color: #1854b4;
+  font-size: 0.99rem;
+  color: #444;
+  margin: 8px 0;
 }
 .voto-confirmado {
-  margin-top: 8px;
-  background: #eaf3ff;
-  border-radius: 8px;
-  padding: 7px 9px;
-  color: #1a4297;
-  font-weight: 600;
-  font-size: 1.01rem;
+  background: #e9f6ea;
+  color: #195f2e;
+  border-left: 4px solid #39b564;
+  padding: 7px 13px;
+  border-radius: 7px;
+  margin-bottom: 8px;
 }
 .voto-exibido {
-  padding: 5px 14px;
-  border-radius: 14px;
-  font-size: 1.02rem;
-  margin-left: 7px;
-}
-.voto-sim { background: #c3edc5; color: #297f43; }
-.voto-não, .voto-nao { background: #ffd4db; color: #c02444; }
-.voto-abstenção, .voto-abstencao { background: #f6e9b6; color: #b39722; }
-
-.aviso {
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 1.04rem;
-  font-weight: 500;
-  margin-bottom: 8px;
-  border: 1px solid #f0e6d3;
-}
-
-.tribuna-publico {
-  margin: 8px 0 10px 0;
-  color: #4d5e7a;
-  font-size: 0.98rem;
-  padding: 6px 8px;
-  border-left: 4px solid #e8eefc;
-  background: #f8fafd;
-  border-radius: 6px;
-}
-ul {
-  margin: 0 0 0.5em 0;
-  padding-left: 19px;
-}
-@media (max-width: 650px) {
-  .parlamentar-header { flex-direction: column; gap: 7px; align-items: flex-start;}
-  .sessao-info, .sessao-voto-bloco { padding: 7px 1vw; }
-  .sessao-parlamentar-bloco { padding: 6px 0vw 12px 0vw; }
-}
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  background: #f9fbfe;
-  border-radius: 8px;
-  font-size: 1rem;
-  overflow-x: auto;
-  display: block;
-  max-width: 100vw;
-}
-th, td {
-  padding: 6px 3px;
-  text-align: left;
-  white-space: nowrap;
-}
-th {
-  background: #f0f4fa;
   font-weight: 700;
-  font-size: 0.97rem;
-  color: #1854b4;
+  padding: 4px 15px;
+  margin-left: 9px;
+  border-radius: 6px;
+  background: #f7fafb;
+  font-size: 1.11rem;
 }
-td {
-  font-size: 0.97rem;
-  color: #2d3c50;
-  vertical-align: middle;
-}
-tr {
-  border-bottom: 1px solid #e7eaf1;
-}
-tr:last-child { border-bottom: none; }
+.voto-sim { background: #39b564 !important; color: #fff !important; }
+.voto-não, .voto-nao { background: #e02525 !important; color: #fff !important; }
+.voto-abstenção, .voto-abstencao { background: #d2bc00 !important; color: #fff !important; }
 
-@media (max-width: 650px) {
-  table { font-size: 0.96rem; }
-  th, td { padding: 5px 2px; }
-  .parlamentar-foto, td img, th img { width: 33px !important; height: 33px !important;}
-}
-
-/* Cards mesa diretora, presentes */
-@media (max-width: 520px) {
-  .sessao-info, .sessao-voto-bloco, .sessao-parlamentar-bloco {
-    padding: 4px 0vw 6px 0vw;
-  }
-  th, td { font-size: 0.94rem; }
-}
-
-/* Modal */
+/* MODAL */
 .modal-overlay {
   position: fixed;
   left: 0; top: 0; width: 100vw; height: 100vh;
-  background: #0006;
-  z-index: 2000;
+  background: #2227;
+  z-index: 2222;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .modal-confirmacao {
   background: #fff;
-  border-radius: 13px;
-  min-width: 90vw;
-  max-width: 97vw;
-  box-shadow: 0 4px 28px #0003;
-  padding: 18px 9vw 13px 9vw;
-  font-size: 1.07rem;
-  color: #233;
+  padding: 30px 32px 22px 32px;
+  border-radius: 10px;
+  box-shadow: 0 3px 20px #0005;
+  max-width: 320px;
+  min-width: 220px;
+  text-align: center;
 }
-.modal-confirmacao button {
-  margin: 7px 8px 0 0;
+.botao-confirmar, .botao-cancelar {
   padding: 9px 17px;
-  border-radius: 6px;
-  font-size: 1rem;
   border: none;
+  border-radius: 7px;
+  font-weight: 700;
+  margin: 7px 8px 0 0;
+  font-size: 1.01rem;
   cursor: pointer;
+  transition: 0.14s;
 }
 .botao-confirmar { background: #1854b4; color: #fff; }
-.botao-cancelar { background: #d5dbe8; color: #444; }
-@media (max-width: 600px) {
-  .modal-confirmacao { padding: 12px 4vw; min-width: unset; }
+.botao-cancelar { background: #eee; color: #222; }
+
+/* TRIBUNA */
+.aviso {
+  border-radius: 7px;
+  padding: 10px 13px;
+  margin-bottom: 9px;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+.tribuna-publico {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-size: 0.99rem;
+  color: #0b55b5;
+  background: #eaf3ff;
+  padding: 7px 12px;
+  border-radius: 7px;
+  border-left: 4px solid #1854b4;
 }
 
-::-webkit-scrollbar { width: 7px; background: #e9edf3; }
-::-webkit-scrollbar-thumb { background: #bfd0f4; border-radius: 7px; }
+@media (max-width: 700px) {
+  .parlamentar-header {
+    gap: 7px;
+  }
+  .parlamentar-nome {
+    font-size: 1.01rem;
+  }
+  .parlamentar-foto {
+    width: 45px;
+    height: 45px;
+  }
+  .sessao-info {
+    font-size: 0.95rem;
+    padding: 11px 7px 8px 8px;
+  }
+  .botao-voto, .botao-confirmar, .botao-cancelar {
+    font-size: 0.97rem;
+    padding: 8px 12px;
+  }
+  .voto-exibido {
+    font-size: 0.98rem;
+    padding: 4px 9px;
+    margin-left: 5px;
+  }
+  .modal-confirmacao {
+    max-width: 96vw;
+    min-width: 0;
+    padding: 19px 5vw 16px 5vw;
+  }
+}
+
+/* SCROLL TABELAS E LISTAS */
+table, .tribuna-lista, ul {
+  width: 100%;
+  overflow-x: auto;
+  max-width: 100vw;
+  font-size: 0.98rem;
+}
+th, td {
+  padding: 7px 5px;
+  text-align: left;
+  font-size: inherit;
+}
+@media (max-width: 600px) {
+  table, th, td {
+    font-size: 0.97rem;
+    padding: 5px 3px;
+  }
+  .tribuna-lista img, table img {
+    width: 18px !important;
+    height: 18px !important;
+    min-width: 18px !important;
+  }
+}
+
+/* BLOCO DE ABA CENTRAL */
+.sessao-parlamentar-bloco {
+  padding: 0 11px 15px 11px;
+  margin-bottom: 28px;
+}
+@media (max-width: 700px) {
+  .sessao-parlamentar-bloco {
+    padding: 0 1vw 15vw 1vw;
+    margin-bottom: 10vw;
+  }
+}
+
+/* COR PADRÃO */
+:root {
+  --azul-camara: #1854b4;
+}
+
+/* Correção: esconder scrollbar em mobile iOS/Android moderno */
+.sessao-parlamentar-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* --------- FIM --------- */
