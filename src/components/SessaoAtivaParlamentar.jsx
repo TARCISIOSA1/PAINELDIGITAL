@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { doc, onSnapshot, updateDoc, arrayUnion } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
-import Chat from "./Chat";  // <<== Usa seu Chat existente!
+import Chat from "./email/Chat"; // <<== Usa seu Chat existente!
 import "./SessaoAtivaParlamentar.css";
 
 const getUsuarioLogado = () => ({
