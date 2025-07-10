@@ -16,7 +16,7 @@ import { db, storage } from "../../firebase";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import "./Chat.css";
 
-// Função para buscar o usuário logado do localStorage
+// Pega dados do usuário logado (id, nome, foto, etc)
 function getUsuarioLogado() {
   try {
     const obj = JSON.parse(localStorage.getItem("usuarioLogado"));
@@ -27,11 +27,10 @@ function getUsuarioLogado() {
 }
 
 export default function Chat() {
-  // Dados do usuário logado
+  // Usuário logado
   const usuarioLogado = getUsuarioLogado();
   const usuarioId = usuarioLogado?.id || "";
   const [usuarios, setUsuarios] = useState([]);
-  const [onlineIds, setOnlineIds] = useState(new Set());
   const [conversas, setConversas] = useState([]);
   const [conversaAtiva, setConversaAtiva] = useState(null);
   const [mensagemTexto, setMensagemTexto] = useState("");
@@ -47,47 +46,16 @@ export default function Chat() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // Apagar grupo/conversa
-  async function apagarConversa(conversaId) {
-    if (!window.confirm("Tem certeza que deseja apagar este grupo/conversa? Essa ação não pode ser desfeita!")) return;
-    const mensagensRef = collection(db, "conversas", conversaId, "mensagens");
-    const mensagensSnap = await getDocs(mensagensRef);
-    const deletePromises = [];
-    mensagensSnap.forEach((mensagemDoc) => {
-      deletePromises.push(deleteDoc(doc(db, "conversas", conversaId, "mensagens", mensagemDoc.id)));
-    });
-    await Promise.all(deletePromises);
-    await deleteDoc(doc(db, "conversas", conversaId));
-    alert("Conversa/Grupo apagado com sucesso!");
-    setConversaAtiva(null);
-  }
-
-  // Limpar mensagens
-  async function limparMensagens(conversaId) {
-    if (!window.confirm("Tem certeza que deseja limpar todas as mensagens desta conversa?")) return;
-    const mensagensRef = collection(db, "conversas", conversaId, "mensagens");
-    const mensagensSnap = await getDocs(mensagensRef);
-    const deletePromises = [];
-    mensagensSnap.forEach((mensagemDoc) => {
-      deletePromises.push(deleteDoc(doc(db, "conversas", conversaId, "mensagens", mensagemDoc.id)));
-    });
-    await Promise.all(deletePromises);
-    alert("Mensagens apagadas com sucesso!");
-  }
-
-  // Buscar contatos (usuarios)
+  // Buscar contatos (parlamentares)
   useEffect(() => {
-    const q = query(collection(db, "usuarios"));
+    const q = query(collection(db, "parlamentares"));
     const unsub = onSnapshot(q, (snapshot) => {
       const lista = [];
-      const onlineSet = new Set();
       snapshot.forEach(doc => {
         const data = doc.data();
         lista.push({ id: doc.id, ...data });
-        if (data.online) onlineSet.add(doc.id);
       });
       setUsuarios(lista);
-      setOnlineIds(onlineSet);
     });
     return () => unsub();
   }, []);
@@ -226,10 +194,6 @@ export default function Chat() {
     return usuarios.find(u => u.id === id) || { nome: "Usuário", foto: "" };
   }
 
-  function isOnline(id) {
-    return onlineIds.has(id);
-  }
-
   // ==== ENVIO DE ARQUIVO ====
   async function handleArquivoSelecionado(e) {
     const file = e.target.files[0];
@@ -251,8 +215,9 @@ export default function Chat() {
   // ==== GRAVAÇÃO DE ÁUDIO ====
   async function gravarAudio() {
     if (gravando) {
-      // Para a gravação
-      mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
       setGravando(false);
       return;
     }
@@ -260,34 +225,46 @@ export default function Chat() {
       alert("Navegador não suporta gravação de áudio.");
       return;
     }
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorderRef.current = new window.MediaRecorder(stream);
-    audioChunksRef.current = [];
-    mediaRecorderRef.current.ondataavailable = (e) => {
-      if (e.data.size > 0) audioChunksRef.current.push(e.data);
-    };
-    mediaRecorderRef.current.onstop = async () => {
-      const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-      const caminho = `chat/${conversaAtiva.id}/${Date.now()}_audio.webm`;
-      const refAudio = storageRef(storage, caminho);
-      await uploadBytes(refAudio, blob);
-      const url = await getDownloadURL(refAudio);
-      await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
-        remetenteId: usuarioId,
-        tipo: "audio",
-        urlAudio: url,
-        timestamp: new Date(),
-      });
-    };
-    mediaRecorderRef.current.start();
-    setGravando(true);
-    // Para gravação automaticamente após 30 segundos
-    setTimeout(() => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-        mediaRecorderRef.current.stop();
-        setGravando(false);
-      }
-    }, 30000);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new window.MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mediaRecorderRef.current.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+      mediaRecorderRef.current.onstop = async () => {
+        if (!audioChunksRef.current.length) {
+          alert("Nenhum áudio gravado. Tente novamente.");
+          return;
+        }
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const caminho = `chat/${conversaAtiva.id}/${Date.now()}_audio.webm`;
+        const refAudio = storageRef(storage, caminho);
+        await uploadBytes(refAudio, blob);
+        const url = await getDownloadURL(refAudio);
+        await addDoc(collection(db, "conversas", conversaAtiva.id, "mensagens"), {
+          remetenteId: usuarioId,
+          tipo: "audio",
+          urlAudio: url,
+          timestamp: new Date(),
+        });
+      };
+      mediaRecorderRef.current.start();
+      setGravando(true);
+      setTimeout(() => {
+        if (
+          mediaRecorderRef.current &&
+          mediaRecorderRef.current.state === "recording"
+        ) {
+          mediaRecorderRef.current.stop();
+          setGravando(false);
+        }
+      }, 30000);
+    } catch (err) {
+      alert("Não foi possível acessar o microfone.");
+    }
   }
 
   // Caso não esteja logado
@@ -326,9 +303,10 @@ export default function Chat() {
             >
               <img src={u.foto || "/default-avatar.png"} alt={u.nome} className="foto-contato" />
               <div>
-                <strong>{u.nome}</strong>
+                <strong style={{ fontSize: 15, maxWidth: 80, overflow: "hidden", textOverflow: "ellipsis", display: "inline-block", whiteSpace: "nowrap" }}>
+                  {u.nome}
+                </strong>
                 {u.numero && <span className="partido-numero"> - {u.numero}</span>}
-                {isOnline(u.id) && <span className="online-indicador">●</span>}
               </div>
             </div>
           ))}
@@ -384,7 +362,7 @@ export default function Chat() {
                     checked={grupoParticipantes.has(u.id)}
                     onChange={() => toggleParticipante(u.id)}
                   />
-                  {u.nome} {isOnline(u.id) && <span className="online-indicador">●</span>}
+                  {u.nome}
                 </label>
               ))}
             </div>
@@ -405,7 +383,6 @@ export default function Chat() {
                   : conversaAtiva.nome || "Grupo sem nome"}
               </h3>
             </div>
-            {/* BOTÕES DE AÇÃO */}
             <div style={{ margin: "10px 0" }}>
               <button
                 style={{ background: "#f22", color: "#fff", marginRight: 8, border: 0, padding: "6px 14px", borderRadius: 4 }}
@@ -433,12 +410,12 @@ export default function Chat() {
                       <img src={remetente.foto} alt={remetente.nome} className="foto-remetente" />
                     )}
                     <div className="mensagem-texto">
-                      {!isRemetente && <strong>{remetente.nome}</strong>}
-                      {/* MENSAGEM DE ÁUDIO */}
+                      {!isRemetente && <strong style={{ fontSize: 13, maxWidth: 85, overflow: "hidden", textOverflow: "ellipsis", display: "inline-block", whiteSpace: "nowrap" }}>{remetente.nome}</strong>}
+                      {/* Áudio */}
                       {msg.tipo === "audio" && msg.urlAudio &&
                         <audio src={msg.urlAudio} controls style={{ width: 200 }} />
                       }
-                      {/* ARQUIVOS */}
+                      {/* Arquivo */}
                       {msg.tipo === "arquivo" && msg.urlArquivo &&
                         <div>
                           <a href={msg.urlArquivo} target="_blank" rel="noopener noreferrer">
@@ -446,16 +423,16 @@ export default function Chat() {
                           </a>
                         </div>
                       }
-                      {/* IMAGEM */}
+                      {/* Imagem */}
                       {msg.tipo === "imagem" && msg.urlArquivo &&
                         <div>
-                          <img src={msg.urlArquivo} alt={msg.nomeArquivo} style={{ maxWidth: 180, maxHeight: 180, borderRadius: 7, border: "1px solid #ccc" }} />
+                          <img src={msg.urlArquivo} alt={msg.nomeArquivo} style={{ maxWidth: 120, maxHeight: 120, borderRadius: 7, border: "1px solid #ccc" }} />
                           <div style={{ fontSize: 12 }}>{msg.nomeArquivo}</div>
                         </div>
                       }
-                      {/* TEXTO */}
+                      {/* Texto */}
                       {(!msg.tipo || msg.tipo === "texto") && msg.texto &&
-                        <p>{msg.texto}</p>
+                        <p style={{ margin: 0 }}>{msg.texto}</p>
                       }
                     </div>
                   </div>
@@ -463,7 +440,6 @@ export default function Chat() {
               })}
               <div ref={mensagensEndRef}></div>
             </div>
-            {/* FORM DE ENVIO */}
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -471,7 +447,6 @@ export default function Chat() {
               }}
               className="form-enviar-msg"
             >
-              {/* INPUT HIDDEN DE ARQUIVO */}
               <input
                 type="file"
                 accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx"
@@ -479,26 +454,26 @@ export default function Chat() {
                 ref={fileInputRef}
                 onChange={handleArquivoSelecionado}
               />
-              {/* BOTÃO DE ARQUIVO */}
               <button
                 type="button"
                 onClick={() => fileInputRef.current.click()}
                 title="Enviar arquivo"
                 style={{ marginRight: 8 }}
               >📎</button>
-              {/* BOTÃO DE ÁUDIO */}
-              <button
-                type="button"
-                onClick={gravarAudio}
-                title={gravando ? "Parar gravação" : "Gravar áudio"}
-                style={{ marginRight: 8, color: gravando ? "#c00" : "#222" }}
-              >{gravando ? "⏹️" : "🎤"}</button>
-              {/* TEXTO */}
+              {window.MediaRecorder && (
+                <button
+                  type="button"
+                  onClick={gravarAudio}
+                  title={gravando ? "Parar gravação" : "Gravar áudio"}
+                  style={{ marginRight: 8, color: gravando ? "#c00" : "#222" }}
+                >{gravando ? "⏹️" : "🎤"}</button>
+              )}
               <input
                 type="text"
                 placeholder="Digite sua mensagem..."
                 value={mensagemTexto}
                 onChange={(e) => setMensagemTexto(e.target.value)}
+                style={{ maxWidth: 150 }}
               />
               <button type="submit" disabled={mensagemTexto.trim() === ""}>Enviar</button>
             </form>
