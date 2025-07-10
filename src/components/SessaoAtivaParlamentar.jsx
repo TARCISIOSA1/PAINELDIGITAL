@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { doc, onSnapshot, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, getDocs, updateDoc, arrayUnion, collection } from "firebase/firestore";
 import { db } from "../firebase";
 import TopoInstitucional from "./TopoInstitucional";
 import Chat from "./email/Chat";
@@ -9,10 +9,12 @@ export default function SessaoAtivaParlamentar() {
   const usuarioId = localStorage.getItem("id");
 
   const [parlamentar, setParlamentar] = useState(null);
+  const [parlamentares, setParlamentares] = useState([]); // TODOS
   const [painel, setPainel] = useState(null);
   const [voto, setVoto] = useState("");
   const [aba, setAba] = useState("votacao");
   const [enviando, setEnviando] = useState(false);
+  const [materiasVotadas, setMateriasVotadas] = useState([]);
 
   // Badge alerta chat
   const [chatAlert, setChatAlert] = useState(false);
@@ -20,15 +22,20 @@ export default function SessaoAtivaParlamentar() {
   // Modal de confirmação de voto
   const [modalConfirm, setModalConfirm] = useState({ exibir: false, etapa: 1, votoNovo: "" });
 
+  // Carrega TODOS os parlamentares
   useEffect(() => {
-    if (!usuarioId) return;
-    async function fetchParlamentar() {
-      const snap = await getDoc(doc(db, "parlamentares", usuarioId));
-      setParlamentar(snap.exists() ? snap.data() : null);
+    async function fetchParlamentares() {
+      const snap = await getDocs(collection(db, "parlamentares"));
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setParlamentares(lista);
+      // Parlamentar logado
+      const eu = lista.find(p => p.id === usuarioId);
+      setParlamentar(eu || null);
     }
-    fetchParlamentar();
+    fetchParlamentares();
   }, [usuarioId]);
 
+  // Painel Ativo (sessão/votação/tribuna)
   useEffect(() => {
     const ref = doc(db, "painelAtivo", "ativo");
     const unsubscribe = onSnapshot(ref, (snap) => {
@@ -63,6 +70,18 @@ export default function SessaoAtivaParlamentar() {
     return () => unsubscribe();
   }, [parlamentar, aba]);
 
+  // Carrega matérias votadas para resultados (exemplo: pega todas já votadas da coleção)
+  useEffect(() => {
+    async function fetchMaterias() {
+      const snap = await getDocs(collection(db, "materias"));
+      // Filtra só matérias já votadas e que tenham votos registrados
+      const lista = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .filter(m => m.status === "Votada" || m.status === "Aprovada" || m.status === "Rejeitada" || m.votos);
+      setMateriasVotadas(lista);
+    }
+    fetchMaterias();
+  }, []);
+
   // PEDIDOS DE FALA - sempre do painelAtivo
   const pedidosTribuna = painel?.pedidosTribuna || [];
 
@@ -70,7 +89,6 @@ export default function SessaoAtivaParlamentar() {
   const pedirPalavra = async () => {
     if (!parlamentar) return;
     setEnviando(true);
-    // Salva como "Em Análise"
     await updateDoc(doc(db, "painelAtivo", "ativo"), {
       pedidosTribuna: arrayUnion({
         id: parlamentar.id,
@@ -124,6 +142,7 @@ export default function SessaoAtivaParlamentar() {
     { key: "votacao", label: "Votação" },
     { key: "tribuna", label: "Tribuna" },
     { key: "sessao", label: "Sessão Ativa" },
+    { key: "resultados", label: "Resultados" },
     { key: "chat", label: "Chat" },
   ];
 
@@ -147,7 +166,7 @@ export default function SessaoAtivaParlamentar() {
     );
 
   const { votacaoAtual, numeroSessaoLegislativa, numeroSessaoOrdinaria, modalidade, local, legislatura, legislaturaDescricao,
-    data, hora, presidente, secretario, mesaDiretora, parlamentares, ataCompleta, ataPdfUrl, observacoes
+    data, hora, presidente, secretario, mesaDiretora, ataCompleta, ataPdfUrl, observacoes
   } = painel;
 
   const materia = votacaoAtual?.materia || votacaoAtual?.titulo || "-";
@@ -169,6 +188,18 @@ export default function SessaoAtivaParlamentar() {
 
   // Bloco para o pedido de fala (um só por parlamentar)
   const meuPedido = (pedidosTribuna || []).find(p => p.id === parlamentar.id);
+
+  // Pega oradores da tribuna (com dados completos dos parlamentares)
+  const oradoresTribuna = (painel.tribunaAtual?.oradores || []).map(o => {
+    const p = parlamentares.find(p => p.id === o.id) || {};
+    return {
+      ...o,
+      nome: p.nome || o.nome,
+      partido: p.partido || o.partido,
+      foto: p.foto || o.foto,
+      tipo: p.tipo,
+    };
+  });
 
   return (
     <div className="sessao-parlamentar-container">
@@ -292,7 +323,7 @@ export default function SessaoAtivaParlamentar() {
 
             {/* Lista de Oradores da Tribuna */}
             <h3 style={{marginTop:32}}>Oradores da Tribuna</h3>
-            {painel.tribunaAtual && painel.tribunaAtual.oradores && painel.tribunaAtual.oradores.length > 0 ? (
+            {oradoresTribuna && oradoresTribuna.length > 0 ? (
               <table style={{ width: "100%", marginBottom: 18, background: "#f9fbfe", borderRadius: 8, overflow: "hidden", fontSize: "1rem" }}>
                 <thead>
                   <tr style={{ background: "#f0f4fa" }}>
@@ -305,7 +336,7 @@ export default function SessaoAtivaParlamentar() {
                   </tr>
                 </thead>
                 <tbody>
-                  {painel.tribunaAtual.oradores.map((o, i) => (
+                  {oradoresTribuna.map((o, i) => (
                     <tr key={o.id || i} style={{
                       background: painel.tribunaAtual.oradorAtivoIdx === i ? "#c2e5ff" : "transparent",
                       fontWeight: painel.tribunaAtual.oradorAtivoIdx === i ? "bold" : "normal"
@@ -398,6 +429,75 @@ export default function SessaoAtivaParlamentar() {
               <a href={ataPdfUrl} target="_blank" rel="noopener noreferrer" className="botao-voto" style={{ marginTop: 8, display: "inline-block" }}>
                 Baixar Ata em PDF
               </a>
+            )}
+          </div>
+        )}
+
+        {/* ABA RESULTADOS */}
+        {aba === "resultados" && (
+          <div style={{marginTop:8}}>
+            <h2>Resultados das Votações</h2>
+            {(materiasVotadas && materiasVotadas.length > 0) ? (
+              materiasVotadas.map((mat, idx) => {
+                // Agrupa votos
+                const votosArr = Object.values(mat.votos || {});
+                const votosSim = votosArr.filter(v => v.voto === "Sim");
+                const votosNao = votosArr.filter(v => v.voto === "Não");
+                const votosAbst = votosArr.filter(v => v.voto === "Abstenção");
+                return (
+                  <div key={mat.id || idx} style={{marginBottom:30, background:"#f8fafd", borderRadius:8, padding:18, boxShadow:"0 2px 6px #0001"}}>
+                    <div style={{fontWeight:700, fontSize:17, color:"#1854b4", marginBottom:3}}>
+                      {mat.titulo || mat.materia || `Matéria #${idx+1}`}
+                    </div>
+                    <div style={{fontSize:14, color:"#666", marginBottom:10}}>{mat.tipo || ""} - {mat.autor || ""}</div>
+                    <table style={{width:"100%", marginBottom:8, fontSize:15}}>
+                      <thead>
+                        <tr style={{background:"#f0f4fa"}}>
+                          <th style={{padding:6}}>Resultado</th>
+                          <th style={{padding:6}}>Sim</th>
+                          <th style={{padding:6}}>Não</th>
+                          <th style={{padding:6}}>Abstenção</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td style={{padding:6, fontWeight:600}}>
+                            Sim: {votosSim.length} &nbsp;
+                            Não: {votosNao.length} &nbsp;
+                            Abstenção: {votosAbst.length}
+                          </td>
+                          <td style={{padding:6}}>
+                            {votosSim.map(v => (
+                              <div key={v.vereador_id}>
+                                <img src={v.foto||"/assets/default-parlamentar.png"} alt="" style={{width:20, borderRadius:"50%", verticalAlign:"middle", marginRight:4}}/>
+                                {v.nome}
+                              </div>
+                            ))}
+                          </td>
+                          <td style={{padding:6}}>
+                            {votosNao.map(v => (
+                              <div key={v.vereador_id}>
+                                <img src={v.foto||"/assets/default-parlamentar.png"} alt="" style={{width:20, borderRadius:"50%", verticalAlign:"middle", marginRight:4}}/>
+                                {v.nome}
+                              </div>
+                            ))}
+                          </td>
+                          <td style={{padding:6}}>
+                            {votosAbst.map(v => (
+                              <div key={v.vereador_id}>
+                                <img src={v.foto||"/assets/default-parlamentar.png"} alt="" style={{width:20, borderRadius:"50%", verticalAlign:"middle", marginRight:4}}/>
+                                {v.nome}
+                              </div>
+                            ))}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{color:"#888"}}>Nenhuma votação finalizada.</div>
             )}
           </div>
         )}
