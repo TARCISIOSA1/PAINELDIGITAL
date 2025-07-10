@@ -1164,14 +1164,12 @@ case "Controle de Tribuna":
     </div>
   );
 
-
-// ... Outras abas sem alteração.
 default:
-  // Igual ao seu código atual
-  return null;
+      return null;
+    }
+  } // <---- FECHA renderConteudoAba aqui!
 
-
-  // ----------- RENDER PRINCIPAL -----------
+  // ----------- RENDER PRINCIPAL ----------- 
   return (
     <div className="votacao-container">
       <TopoInstitucional
