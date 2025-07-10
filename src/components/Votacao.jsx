@@ -1,3 +1,5 @@
+ //painel de controle//
+
 import React, { useEffect, useState, useRef } from "react";
 import {
   collection, getDocs, doc, updateDoc, setDoc, addDoc, getDoc
@@ -38,7 +40,8 @@ async function salvarPainelAtivoCompleto({
   votos,
   painelRTC,
   observacoes,
-  pauta
+  pauta,
+  transferenciasTempo,
 }) {
   await setDoc(doc(db, "painelAtivo", "ativo"), {
     numeroSessaoOrdinaria: numeroSessaoOrdinaria || "",
@@ -90,6 +93,7 @@ async function salvarPainelAtivoCompleto({
       resumoFala,
       cronometroAtivo,
       bancoHoras: bancoHoras || {},
+      transferenciasTempo: transferenciasTempo || [],
     },
     tipoVotacao: tipoVotacao || "",
     quorumTipo: quorumTipo || "",
@@ -127,6 +131,10 @@ export default function Votacao() {
   const [resumoFala, setResumoFala] = useState("");
   const [bancoHoras, setBancoHoras] = useState({});
   const [tempoExtra, setTempoExtra] = useState(0);
+  // ---- NOVOS ESTADOS PARA TRANSFERÊNCIAS DE TEMPO ----
+  const [oradorDestinoCeder, setOradorDestinoCeder] = useState("");
+  const [tempoCeder, setTempoCeder] = useState(0);
+  const [transferenciasTempo, setTransferenciasTempo] = useState([]); // histórico de transferências
 
   // -------------------- PRESENÇA/LEGISLATURA --------------------
   const [legislaturas, setLegislaturas] = useState([]);
@@ -149,51 +157,46 @@ export default function Votacao() {
     carregarVereadores();
     carregarBancoHoras();
   }, []);
-useEffect(() => {
-  async function carregarPainelAtivo() {
-    const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
-    if (painelSnap.exists()) {
-      const data = painelSnap.data();
+  useEffect(() => {
+    async function carregarPainelAtivo() {
+      const painelSnap = await getDoc(doc(db, "painelAtivo", "ativo"));
+      if (painelSnap.exists()) {
+        const data = painelSnap.data();
+        setSessaoAtiva(sa => ({
+          ...sa,
+          tipo: data.tipo || "",
+          data: data.data || "",
+          hora: data.hora || "",
+          status: data.statusSessao || "",
+          local: data.local || "",
+          pauta: data.pauta || "",
+          observacoes: data.observacoes || "",
+          idLegislatura: data.legislatura || "",
+          mesa: data.mesaDiretora || [],
+        }));
+        setNumeroSessaoOrdinaria(data.numeroSessaoOrdinaria || 0);
+        setNumeroSessaoLegislativa(data.numeroSessaoLegislativa || 0);
+        setHabilitados(data.habilitados || []);
+        setVereadores(data.parlamentares || []);
+        setMaterias(data.ordemDoDia || []);
+        setTipoVotacao(data.tipoVotacao || "Simples");
+        setModalidade(data.modalidade || "Unica");
+        setTempoVotacao(data.tempoVotacao || "");
+        setQuorumTipo(data.quorumTipo || "simples");
+        setQuorumMinimo(data.quorumMinimo || 0);
 
-      // Popular todos os estados com os dados do Firestore
-      setSessaoAtiva(sa => ({
-        ...sa,
-        tipo: data.tipo || "",
-        data: data.data || "",
-        hora: data.hora || "",
-        status: data.statusSessao || "",
-        local: data.local || "",
-        pauta: data.pauta || "",
-        observacoes: data.observacoes || "",
-        idLegislatura: data.legislatura || "",
-        mesa: data.mesaDiretora || [],
-      }));
-
-      setNumeroSessaoOrdinaria(data.numeroSessaoOrdinaria || 0);
-      setNumeroSessaoLegislativa(data.numeroSessaoLegislativa || 0);
-
-      setHabilitados(data.habilitados || []);
-      setVereadores(data.parlamentares || []);
-      setMaterias(data.ordemDoDia || []);
-      setTipoVotacao(data.tipoVotacao || "Simples");
-      setModalidade(data.modalidade || "Unica");
-      setTempoVotacao(data.tempoVotacao || "");
-      setQuorumTipo(data.quorumTipo || "simples");
-      setQuorumMinimo(data.quorumMinimo || 0);
-
-      // Tribuna
-      setOradores(data.tribuna?.oradores || []);
-      setOradorAtivoIdx(data.tribuna?.oradorAtivoIdx ?? -1);
-      setTempoRestante(data.tribuna?.tempoRestante ?? 0);
-      setCronometroAtivo(data.tribuna?.cronometroAtivo ?? false);
-      setResumoFala(data.tribuna?.resumoFala ?? "");
-      setBancoHoras(data.tribuna?.bancoHoras ?? {});
-
-      // ...carregue outros campos que desejar
+        // Tribuna
+        setOradores(data.tribuna?.oradores || []);
+        setOradorAtivoIdx(data.tribuna?.oradorAtivoIdx ?? -1);
+        setTempoRestante(data.tribuna?.tempoRestante ?? 0);
+        setCronometroAtivo(data.tribuna?.cronometroAtivo ?? false);
+        setResumoFala(data.tribuna?.resumoFala ?? "");
+        setBancoHoras(data.tribuna?.bancoHoras ?? {});
+        setTransferenciasTempo(data.tribuna?.transferenciasTempo ?? []);
+      }
     }
-  }
-  carregarPainelAtivo();
-}, []);
+    carregarPainelAtivo();
+  }, []);
 
   useEffect(() => {
     const carregarLegislaturaEContagem = async () => {
@@ -244,7 +247,8 @@ useEffect(() => {
       votos: {},        // Troque se tiver objeto de votos real
       painelRTC: null,  // Troque se usar RTC
       observacoes: sessaoAtiva?.observacoes || "",
-      pauta: sessaoAtiva?.pauta || ""
+      pauta: sessaoAtiva?.pauta || "",
+      transferenciasTempo
     });
     // eslint-disable-next-line
   }, [
@@ -265,7 +269,8 @@ useEffect(() => {
     quorumTipo,
     quorumMinimo,
     modalidade,
-    tempoVotacao
+    tempoVotacao,
+    transferenciasTempo
   ]);
 
   // ------------------- LOAD DADOS -------------------
@@ -365,10 +370,11 @@ useEffect(() => {
         oradorAtivoIdx,
         tempoRestante,
         resumoFala,
-        cronometroAtivo
+        cronometroAtivo,
+        transferenciasTempo
       }
     }).catch(()=>{});
-  }, [oradores, oradorAtivoIdx, tempoRestante, resumoFala, cronometroAtivo]);
+  }, [oradores, oradorAtivoIdx, tempoRestante, resumoFala, cronometroAtivo, transferenciasTempo]);
 
   function usarSaldoHoras(idx) {
     const orador = oradores[idx];
@@ -440,6 +446,40 @@ useEffect(() => {
     setBancoHoras({});
     setOradores(oradores.map(o => ({ ...o, saldo: 0 })));
     updateDoc(doc(db, "painelAtivo", "ativo"), { bancoHoras: {} });
+  }
+
+  // ----------- FUNÇÃO DE CEDER TEMPO -----------
+  function confirmarCederTempo() {
+    if (
+      oradorAtivoIdx < 0 ||
+      !oradorDestinoCeder ||
+      tempoCeder <= 0 ||
+      tempoRestante < tempoCeder
+    ) {
+      alert("Preencha os dados corretamente e tenha tempo suficiente!");
+      return;
+    }
+    // Tira tempo do orador atual
+    setTempoRestante(tr => tr - tempoCeder);
+    // Soma tempo ao destino
+    setOradores(prev => prev.map((o, idx) =>
+      o.id === oradorDestinoCeder
+        ? { ...o, tempoFala: (parseInt(o.tempoFala) || 0) + parseInt(tempoCeder) }
+        : o
+    ));
+    // Registra histórico
+    const de = oradores[oradorAtivoIdx];
+    const para = oradores.find(o => o.id === oradorDestinoCeder);
+    const registro = {
+      de: de.nome,
+      para: para.nome,
+      tempo: tempoCeder,
+      horario: new Date().toLocaleTimeString()
+    };
+    setTransferenciasTempo(prev => [...prev, registro]);
+    setOradorDestinoCeder("");
+    setTempoCeder(0);
+    alert(`Tempo de ${tempoCeder}s cedido de ${de.nome} para ${para.nome}!`);
   }
 
   // -------------- ZERAR PAINEL ATIVO ------------------
@@ -625,6 +665,7 @@ useEffect(() => {
       })),
       assinaturas,
       mesaDiretora: sessaoAtiva?.mesa || [],
+      transferenciasTempo: transferenciasTempo || [],
     };
     if (sessaoAtiva?.id) {
       await setDoc(doc(db, "atas", sessaoAtiva.id), ataFinal, { merge: true });
@@ -651,6 +692,13 @@ useEffect(() => {
     materias.forEach((m, i) => {
       texto += `${i + 1}. ${m.titulo || m.descricao || "Sem título"} (${m.tipo || "-"}) - Autor: ${m.autor || "-"} - Status: ${m.status}\n`;
     });
+    // Bloco de transferências de tempo
+    if (transferenciasTempo.length > 0) {
+      texto += "\nTransferências de Tempo de Tribuna:\n";
+      transferenciasTempo.forEach((t, idx) => {
+        texto += `${idx + 1}. ${t.de} cedeu ${t.tempo}s para ${t.para} [${t.horario}]\n`;
+      });
+    }
     texto += "\nNada mais havendo a tratar, a sessão foi encerrada.\n";
     texto += "\nAssinaturas da Mesa Diretora:\n\n";
     (sessaoAtiva?.mesa || []).forEach((m) => {
@@ -662,414 +710,466 @@ useEffect(() => {
   // ----------- RENDER DE ABAS -----------
   function renderConteudoAba() {
     switch (aba) {
-      case "Controle de Sessão":
-        return (
-          <div className="bloco-dados-gerais">
-            <h3>Dados da Sessão</h3>
-            <b>Número da Sessão Plenária:</b> {numeroSessaoOrdinaria}ª<br />
-            <b>Número da Sessão Legislativa:</b> {numeroSessaoLegislativa}ª<br />
-            <b>Tipo:</b> {sessaoAtiva?.tipo || "-"} <br />
-            <b>Data:</b> {sessaoAtiva?.data || "-"}<br />
-            <b>Hora:</b> {sessaoAtiva?.hora || "-"}<br />
-            <b>Status:</b> {sessaoAtiva?.status || "-"}<br />
-            <b>Legislatura:</b> {legislaturaSelecionada?.descricao || "-"}
-            <hr />
-            <b>Mesa Diretora:</b>
-            <ul>
-              {sessaoAtiva?.mesa?.length > 0
-                ? sessaoAtiva.mesa.map((m, i) => (
-                  <li key={i}>
-                    {m.vereador} <span style={{ color: "#888" }}>({m.cargo})</span>
-                  </li>
-                ))
-                : <li>-</li>
-              }
-            </ul>
-            <hr />
-            <div style={{ margin: "16px 0" }}>
-              <h4>Botões de Controle da Sessão</h4>
-              {sessaoAtiva?.status !== "Ativa" && (
-                <button className="botao-verde" onClick={iniciarSessao}>
-                  ▶ Iniciar Sessão
-                </button>
-              )}
-              {sessaoAtiva?.status === "Ativa" && (
-                <button className="botao-vermelho" onClick={() => alterarStatusSessao("Encerrada")}>
-                  🛑 Encerrar Sessão
-                </button>
-              )}
-              <button className="botao-cinza" onClick={() => alterarStatusSessao("Suspensa")}>
-                ⏸ Suspender Sessão
-              </button>
-              <button className="botao-cinza" onClick={() => alterarStatusSessao("Pausada")}>
-                ⏸ Pausar Sessão
-              </button>
-              <button className="botao-verde" onClick={() => alterarStatusSessao("Ativa")}>
-                ▶ Retomar Sessão
-              </button>
-            </div>
-          </div>
-        );
-      case "Controle de Votação":
-        const quorumObj = QUORUM_OPTIONS.find(o => o.value === quorumTipo);
-        return (
-          <div>
-            <div className="bloco-config-votacao" style={{ margin: "20px 0", padding: 12, background: "#f8fafc", borderRadius: 8 }}>
-              <h4>⚙️ Configuração da Votação</h4>
-              <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
-                <label>
-                  <strong>Tipo de Votação:</strong>{" "}
-                  <select value={tipoVotacao} onChange={e => setTipoVotacao(e.target.value)} style={{ padding: "2px 8px" }}>
-                    <option>Simples</option>
-                    <option>Nominal</option>
-                    <option>Secreta</option>
-                    <option>Aclamação</option>
-                    <option>Destaque</option>
-                    <option>Escrutínio</option>
-                  </select>
-                </label>
-                <label>
-                  <strong>Modalidade:</strong>{" "}
-                  <select value={modalidade} onChange={e => setModalidade(e.target.value)} style={{ padding: "2px 8px" }}>
-                    <option>Unica</option>
-                    <option>Lote</option>
-                  </select>
-                </label>
-                <label>
-                  <strong>Quórum Legal:</strong>{" "}
-                  <select value={quorumTipo} onChange={e => setQuorumTipo(e.target.value)} style={{ padding: "2px 8px" }}>
-                    {QUORUM_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                  </select>
-                  <span style={{ marginLeft: 8, color: "#3a3", fontWeight: 600 }}>
-                    ({quorumMinimo} vereadores) <span style={{ color: "#888", fontWeight: 400 }} title={quorumObj.regra}>• {quorumObj.regra}</span>
-                  </span>
-                </label>
-                <label>
-                  <strong>Tempo de Votação (opcional, min):</strong>
-                  <input
-                    type="number"
-                    value={tempoVotacao}
-                    onChange={e => setTempoVotacao(e.target.value)}
-                    style={{ width: 60, marginLeft: 8 }}
-                  />
-                </label>
-              </div>
-            </div>
-            <div className="controle-votacao">
-              <h4>🛠 Controle da Votação (Status: {statusVotacao})</h4>
-              <button className="botao-cinza" onClick={pausarVotacao}>
-                ⏸ Pausar Votação
-              </button>
-              <button className="botao-verde" onClick={retomarVotacao}>
-                ▶ Retomar Votação
-              </button>
-              <button className="botao-azul" onClick={iniciarVotacao}>
-                ▶ Iniciar Votação
-              </button>
-              <button className="botao-verde" onClick={encerrarVotacao}>
-                ✅ Encerrar Votação
-              </button>
-            </div>
-            <hr />
-            <div className="materias">
-              <h4>📄 Matérias da Ordem do Dia</h4>
-              <ul>
-                {materias.map((m, idx) => (
-                  <li
-                    key={m.id}
-                    className={materiasSelecionadas.includes(m.id) ? "materia-selecionada" : ""}
-                    style={{ display: "flex", alignItems: "center", marginBottom: 6 }}
-                  >
-                    <input
-                      type={modalidade === "Lote" ? "checkbox" : "radio"}
-                      name="materias"
-                      checked={materiasSelecionadas.includes(m.id)}
-                      onChange={() => {
-                        if (m.status !== "votada") toggleMateria(m.id);
-                      }}
-                      disabled={m.status === "votada" || sessaoAtiva?.status !== "Ativa"}
-                    />
-                    <span
-                      style={{
-                        color:
-                          m.status === "votada"
-                            ? "#aaa"
-                            : m.status === "em_votacao"
-                              ? "#2465d6"
-                              : "#202",
-                        fontWeight: m.status === "em_votacao" ? "bold" : "normal",
-                        marginLeft: 8,
-                        marginRight: 12,
-                        flex: 1,
-                      }}
-                    >
-                      {m.titulo} ({m.tipo}) - Status: {m.status}
-                    </span>
-                    <button
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: idx === 0 ? "not-allowed" : "pointer",
-                        opacity: idx === 0 ? 0.3 : 1,
-                        fontSize: 15,
-                      }}
-                      onClick={() => moverMateria(idx, -1)}
-                      disabled={idx === 0}
-                      title="Subir"
-                      type="button"
-                    >
-                      <FaArrowUp />
-                    </button>
-                    <button
-                      style={{
-                        background: "none",
-                        border: "none",
-                        cursor: idx === materias.length - 1 ? "not-allowed" : "pointer",
-                        opacity: idx === materias.length - 1 ? 0.3 : 1,
-                        fontSize: 15,
-                      }}
-                      onClick={() => moverMateria(idx, 1)}
-                      disabled={idx === materias.length - 1}
-                      title="Descer"
-                      type="button"
-                    >
-                      <FaArrowDown />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <hr />
-            <div className="habilitacao">
-              <h4>👥 Habilitação de Vereadores</h4>
-              <ul>
-                {vereadores.map((p) => (
-                  <li key={p.id}>
-                    <input
-                      type="checkbox"
-                      checked={habilitados.includes(p.id)}
-                      onChange={() => {
-                        const novo = habilitados.includes(p.id)
-                          ? habilitados.filter((x) => x !== p.id)
-                          : [...habilitados, p.id];
-                        setHabilitados(novo);
-                        updateDoc(doc(db, "painelAtivo", "ativo"), {
-                          habilitados: novo
-                        });
-                      }}
-                    />
-                    <img
-                      src={p.foto || "/default.png"}
-                      width="30"
-                      alt={p.nome}
-                      style={{ verticalAlign: "middle", margin: "0 5px" }}
-                    />
-                    {p.nome} ({p.partido})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        );
-      case "Controle de Tribuna":
-        return (
-          <div className="tribuna-bloco">
-            <h4>Tribuna — Oradores da Sessão</h4>
-            <table className="tribuna-table" style={{ width: "100%", marginBottom: 18 }}>
-              <thead>
-                <tr>
-                  <th>Ordem</th>
-                  <th>Nome</th>
-                  <th>Partido</th>
-                  <th>Tempo Fala (s)</th>
-                  <th>Saldo (s)</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {oradores.map((o, idx) => (
-                  <tr key={o.id} style={{ background: idx === oradorAtivoIdx ? "#e3ffe3" : undefined }}>
-                    <td>{idx + 1}</td>
-                    <td>{o.nome}</td>
-                    <td>{o.partido}</td>
-                    <td>
-                      <input
-                        type="number"
-                        value={o.tempoFala}
-                        onChange={e => alterarTempoFala(idx, e.target.value)}
-                        style={{ width: 60 }}
-                        disabled={idx !== oradorAtivoIdx}
-                      />
-                      {!o.externo && (
-                        <>
-                          <button onClick={() => usarSaldoHoras(idx)} style={{ marginLeft: 8 }} title="Usar saldo">
-                            Usar Saldo
-                          </button>
-                          <input
-                            type="number"
-                            value={tempoExtra}
-                            onChange={e => setTempoExtra(e.target.value)}
-                            style={{ width: 60, marginLeft: 8 }}
-                            placeholder="Tempo extra"
-                          />
-                          <button onClick={() => adicionarTempoExtra(idx)} style={{ marginLeft: 8 }}>
-                            + Tempo Extra
-                          </button>
-                        </>
-                      )}
-                    </td>
-                    <td>{o.saldo || 0}</td>
-                    <td>
-                      <button onClick={() => setOradorAtivoIdx(idx)}>▶ Iniciar</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {oradorAtivoIdx >= 0 && (
-              <div style={{ padding: 12, border: "1px solid #ccc", borderRadius: 8, marginBottom: 12 }}>
-                <h5>Orador Ativo: {oradores[oradorAtivoIdx].nome} ({oradores[oradorAtivoIdx].partido})</h5>
-                <p>
-                  Tempo restante: {tempoRestante}s{" "}
-                  <button onClick={cronometroAtivo ? pausarFala : iniciarFala}>
-                    {cronometroAtivo ? "Pausar" : "Iniciar"}
-                  </button>
-                  <button onClick={encerrarFala} style={{ marginLeft: 10 }}>Encerrar Fala</button>
-                  <button onClick={proximoOrador} style={{ marginLeft: 10 }}>Próximo Orador</button>
-                </p>
-                <textarea
-                  placeholder="Digite o resumo da fala..."
-                  value={resumoFala}
-                  onChange={e => setResumoFala(e.target.value)}
-                  style={{ width: "100%", minHeight: 40, marginTop: 10 }}
-                />
-              </div>
-            )}
-            <div>
-              <b>Resumos das Falas:</b>
-              <ul>
-                {oradores.filter(o => o.fala).map((o, idx) => (
-                  <li key={idx}><b>{o.nome}:</b> {o.fala} <span style={{ color: "#888" }}>{o.horario || ""}</span></li>
-                ))}
-              </ul>
-            </div>
-            <button onClick={zerarSaldos} style={{ marginTop: 18, color: "#a00" }}>
-              Zerar Saldos (ao Encerrar Sessão)
-            </button>
-          </div>
-        );
-      case "Controle de Presença":
-        return (
-          <div>
-            <h4>Registro de Presença dos Vereadores</h4>
-            <table className="presenca-table">
-              <thead>
-                <tr>
-                  <th>Vereador</th>
-                  <th>Presente?</th>
-                </tr>
-              </thead>
-              <tbody>
-                {vereadores.map((v) => (
-                  <tr key={v.id}>
-                    <td>{v.nome}</td>
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={habilitados.includes(v.id)}
-                        onChange={() => {
-                          const novo = habilitados.includes(v.id)
-                            ? habilitados.filter((x) => x !== v.id)
-                            : [...habilitados, v.id];
-                          setHabilitados(novo);
-                          updateDoc(doc(db, "painelAtivo", "ativo"), {
-                            habilitados: novo
-                          });
-                        }}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-      case "IA":
-        return (
-          <div className="painel-ia-institucional">
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: 26, color: "#1460a0" }}>🤖</span>
-              <h3 style={{ margin: 0 }}>Recursos de Inteligência Artificial</h3>
-            </div>
-            <div className="area-ia-flex">
-              <div style={{ flex: 1, marginRight: 18 }}>
-                <b>Pergunte à IA:</b>
-                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                  <input
-                    type="text"
-                    value={abaIApergunta}
-                    onChange={e => setAbaIApergunta(e.target.value)}
-                    placeholder="Ex: Quem foi o último orador?"
-                    style={{ flex: 1 }}
-                  />
-                  <button onClick={perguntarIA} disabled={!abaIApergunta}>
-                    Perguntar
-                  </button>
-                </div>
-                {abaIAresposta && (
-                  <div className="ia-bloco-resposta" style={{ marginTop: 8 }}>
-                    {abaIAresposta}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      case "ATA":
-        return (
-          <div className="ata-construtor">
-            <h3>Construtor de ATA</h3>
-            <button onClick={gerarTextoPadraoAta} style={{ marginBottom: 10 }}>
-              Gerar texto padrão
-            </button>
-            <textarea
-              style={{ width: "100%", minHeight: 200, marginBottom: 8 }}
-              value={ataEditor}
-              onChange={e => setAtaEditor(e.target.value)}
-              placeholder="Texto da ata da sessão..."
+  
+  case "Controle de Sessão":
+  return (
+    <div className="bloco-dados-gerais">
+      <h3>Dados da Sessão</h3>
+      <b>Número da Sessão Plenária:</b> {numeroSessaoOrdinaria}ª<br />
+      <b>Número da Sessão Legislativa:</b> {numeroSessaoLegislativa}ª<br />
+      <b>Tipo:</b> {sessaoAtiva?.tipo || "-"} <br />
+      <b>Data:</b> {sessaoAtiva?.data || "-"}<br />
+      <b>Hora:</b> {sessaoAtiva?.hora || "-"}<br />
+      <b>Status:</b> {sessaoAtiva?.status || "-"}<br />
+      <b>Legislatura:</b> {legislaturaSelecionada?.descricao || "-"}
+      <hr />
+      <b>Mesa Diretora:</b>
+      <ul>
+        {sessaoAtiva?.mesa?.length > 0
+          ? sessaoAtiva.mesa.map((m, i) => (
+            <li key={i}>
+              {m.vereador} <span style={{ color: "#888" }}>({m.cargo})</span>
+            </li>
+          ))
+          : <li>-</li>
+        }
+      </ul>
+      <hr />
+      <div style={{ margin: "16px 0" }}>
+        <h4>Botões de Controle da Sessão</h4>
+        {sessaoAtiva?.status !== "Ativa" && (
+          <button className="botao-verde" onClick={iniciarSessao}>
+            ▶ Iniciar Sessão
+          </button>
+        )}
+        {sessaoAtiva?.status === "Ativa" && (
+          <button className="botao-vermelho" onClick={() => alterarStatusSessao("Encerrada")}>
+            🛑 Encerrar Sessão
+          </button>
+        )}
+        <button className="botao-cinza" onClick={() => alterarStatusSessao("Suspensa")}>
+          ⏸ Suspender Sessão
+        </button>
+        <button className="botao-cinza" onClick={() => alterarStatusSessao("Pausada")}>
+          ⏸ Pausar Sessão
+        </button>
+        <button className="botao-verde" onClick={() => alterarStatusSessao("Ativa")}>
+          ▶ Retomar Sessão
+        </button>
+      </div>
+    </div>
+  );
+
+case "Controle de Votação":
+  const quorumObj = QUORUM_OPTIONS.find(o => o.value === quorumTipo);
+  return (
+    <div>
+      <div className="bloco-config-votacao" style={{ margin: "20px 0", padding: 12, background: "#f8fafc", borderRadius: 8 }}>
+        <h4>⚙️ Configuração da Votação</h4>
+        <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
+          <label>
+            <strong>Tipo de Votação:</strong>{" "}
+            <select value={tipoVotacao} onChange={e => setTipoVotacao(e.target.value)} style={{ padding: "2px 8px" }}>
+              <option>Simples</option>
+              <option>Nominal</option>
+              <option>Secreta</option>
+              <option>Aclamação</option>
+              <option>Destaque</option>
+              <option>Escrutínio</option>
+            </select>
+          </label>
+          <label>
+            <strong>Modalidade:</strong>{" "}
+            <select value={modalidade} onChange={e => setModalidade(e.target.value)} style={{ padding: "2px 8px" }}>
+              <option>Unica</option>
+              <option>Lote</option>
+            </select>
+          </label>
+          <label>
+            <strong>Quórum Legal:</strong>{" "}
+            <select value={quorumTipo} onChange={e => setQuorumTipo(e.target.value)} style={{ padding: "2px 8px" }}>
+              {QUORUM_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+            </select>
+            <span style={{ marginLeft: 8, color: "#3a3", fontWeight: 600 }}>
+              ({quorumMinimo} vereadores) <span style={{ color: "#888", fontWeight: 400 }} title={quorumObj.regra}>• {quorumObj.regra}</span>
+            </span>
+          </label>
+          <label>
+            <strong>Tempo de Votação (opcional, min):</strong>
+            <input
+              type="number"
+              value={tempoVotacao}
+              onChange={e => setTempoVotacao(e.target.value)}
+              style={{ width: 60, marginLeft: 8 }}
             />
-            <div>
-              <b>Assinaturas:</b>
-              <ul>
-                {(sessaoAtiva?.mesa || []).map((m, idx) => (
-                  <li key={idx}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={assinaturas.includes(m.vereador)}
-                        onChange={() => {
-                          setAssinaturas(a =>
-                            a.includes(m.vereador)
-                              ? a.filter(x => x !== m.vereador)
-                              : [...a, m.vereador]
-                          );
-                        }}
-                      />
-                      {m.vereador} ({m.cargo})
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <button onClick={salvarAta} disabled={carregandoAta}>
-              {carregandoAta ? "Salvando..." : "Salvar ATA"}
+          </label>
+        </div>
+      </div>
+      <div className="controle-votacao">
+        <h4>🛠 Controle da Votação (Status: {statusVotacao})</h4>
+        <button className="botao-cinza" onClick={pausarVotacao}>
+          ⏸ Pausar Votação
+        </button>
+        <button className="botao-verde" onClick={retomarVotacao}>
+          ▶ Retomar Votação
+        </button>
+        <button className="botao-azul" onClick={iniciarVotacao}>
+          ▶ Iniciar Votação
+        </button>
+        <button className="botao-verde" onClick={encerrarVotacao}>
+          ✅ Encerrar Votação
+        </button>
+      </div>
+      <hr />
+      <div className="materias">
+        <h4>📄 Matérias da Ordem do Dia</h4>
+        <ul>
+          {materias.map((m, idx) => (
+            <li
+              key={m.id}
+              className={materiasSelecionadas.includes(m.id) ? "materia-selecionada" : ""}
+              style={{ display: "flex", alignItems: "center", marginBottom: 6 }}
+            >
+              <input
+                type={modalidade === "Lote" ? "checkbox" : "radio"}
+                name="materias"
+                checked={materiasSelecionadas.includes(m.id)}
+                onChange={() => {
+                  if (m.status !== "votada") toggleMateria(m.id);
+                }}
+                disabled={m.status === "votada" || sessaoAtiva?.status !== "Ativa"}
+              />
+              <span
+                style={{
+                  color:
+                    m.status === "votada"
+                      ? "#aaa"
+                      : m.status === "em_votacao"
+                        ? "#2465d6"
+                        : "#202",
+                  fontWeight: m.status === "em_votacao" ? "bold" : "normal",
+                  marginLeft: 8,
+                  marginRight: 12,
+                  flex: 1,
+                }}
+              >
+                {m.titulo} ({m.tipo}) - Status: {m.status}
+              </span>
+              <button
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: idx === 0 ? "not-allowed" : "pointer",
+                  opacity: idx === 0 ? 0.3 : 1,
+                  fontSize: 15,
+                }}
+                onClick={() => moverMateria(idx, -1)}
+                disabled={idx === 0}
+                title="Subir"
+                type="button"
+              >
+                <FaArrowUp />
+              </button>
+              <button
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: idx === materias.length - 1 ? "not-allowed" : "pointer",
+                  opacity: idx === materias.length - 1 ? 0.3 : 1,
+                  fontSize: 15,
+                }}
+                onClick={() => moverMateria(idx, 1)}
+                disabled={idx === materias.length - 1}
+                title="Descer"
+                type="button"
+              >
+                <FaArrowDown />
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <hr />
+      <div className="habilitacao">
+        <h4>👥 Habilitação de Vereadores</h4>
+        <ul>
+          {vereadores.map((p) => (
+            <li key={p.id}>
+              <input
+                type="checkbox"
+                checked={habilitados.includes(p.id)}
+                onChange={() => {
+                  const novo = habilitados.includes(p.id)
+                    ? habilitados.filter((x) => x !== p.id)
+                    : [...habilitados, p.id];
+                  setHabilitados(novo);
+                  updateDoc(doc(db, "painelAtivo", "ativo"), {
+                    habilitados: novo
+                  });
+                }}
+              />
+              <img
+                src={p.foto || "/default.png"}
+                width="30"
+                alt={p.nome}
+                style={{ verticalAlign: "middle", margin: "0 5px" }}
+              />
+              {p.nome} ({p.partido})
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+
+case "Controle de Presença":
+  return (
+    <div>
+      <h4>Registro de Presença dos Vereadores</h4>
+      <table className="presenca-table">
+        <thead>
+          <tr>
+            <th>Vereador</th>
+            <th>Presente?</th>
+          </tr>
+        </thead>
+        <tbody>
+          {vereadores.map((v) => (
+            <tr key={v.id}>
+              <td>{v.nome}</td>
+              <td>
+                <input
+                  type="checkbox"
+                  checked={habilitados.includes(v.id)}
+                  onChange={() => {
+                    const novo = habilitados.includes(v.id)
+                      ? habilitados.filter((x) => x !== v.id)
+                      : [...habilitados, v.id];
+                    setHabilitados(novo);
+                    updateDoc(doc(db, "painelAtivo", "ativo"), {
+                      habilitados: novo
+                    });
+                  }}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+
+case "IA":
+  return (
+    <div className="painel-ia-institucional">
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <span style={{ fontSize: 26, color: "#1460a0" }}>🤖</span>
+        <h3 style={{ margin: 0 }}>Recursos de Inteligência Artificial</h3>
+      </div>
+      <div className="area-ia-flex">
+        <div style={{ flex: 1, marginRight: 18 }}>
+          <b>Pergunte à IA:</b>
+          <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+            <input
+              type="text"
+              value={abaIApergunta}
+              onChange={e => setAbaIApergunta(e.target.value)}
+              placeholder="Ex: Quem foi o último orador?"
+              style={{ flex: 1 }}
+            />
+            <button onClick={perguntarIA} disabled={!abaIApergunta}>
+              Perguntar
             </button>
           </div>
-        );
-      default:
-        return null;
-    }
-  }
+          {abaIAresposta && (
+            <div className="ia-bloco-resposta" style={{ marginTop: 8 }}>
+              {abaIAresposta}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+case "ATA":
+  return (
+    <div className="ata-construtor">
+      <h3>Construtor de ATA</h3>
+      <button onClick={gerarTextoPadraoAta} style={{ marginBottom: 10 }}>
+        Gerar texto padrão
+      </button>
+      <textarea
+        style={{ width: "100%", minHeight: 200, marginBottom: 8 }}
+        value={ataEditor}
+        onChange={e => setAtaEditor(e.target.value)}
+        placeholder="Texto da ata da sessão..."
+      />
+      <div>
+        <b>Assinaturas:</b>
+        <ul>
+          {(sessaoAtiva?.mesa || []).map((m, idx) => (
+            <li key={idx}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={assinaturas.includes(m.vereador)}
+                  onChange={() => {
+                    setAssinaturas(a =>
+                      a.includes(m.vereador)
+                        ? a.filter(x => x !== m.vereador)
+                        : [...a, m.vereador]
+                    );
+                  }}
+                />
+                {m.vereador} ({m.cargo})
+              </label>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <button onClick={salvarAta} disabled={carregandoAta}>
+        {carregandoAta ? "Salvando..." : "Salvar ATA"}
+      </button>
+    </div>
+  );
+case "Controle de Tribuna":
+  return (
+    <div className="tribuna-bloco">
+      <h4>Tribuna — Oradores da Sessão</h4>
+      <table className="tribuna-table" style={{ width: "100%", marginBottom: 18 }}>
+        <thead>
+          <tr>
+            <th>Ordem</th>
+            <th>Nome</th>
+            <th>Partido</th>
+            <th>Tempo Fala (s)</th>
+            <th>Saldo (s)</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {oradores.map((o, idx) => (
+            <tr key={o.id} style={{ background: idx === oradorAtivoIdx ? "#e3ffe3" : undefined }}>
+              <td>{idx + 1}</td>
+              <td>{o.nome}</td>
+              <td>{o.partido}</td>
+              <td>
+                <input
+                  type="number"
+                  value={o.tempoFala}
+                  onChange={e => alterarTempoFala(idx, e.target.value)}
+                  style={{ width: 60 }}
+                  disabled={idx !== oradorAtivoIdx}
+                />
+                {!o.externo && (
+                  <>
+                    <button onClick={() => usarSaldoHoras(idx)} style={{ marginLeft: 8 }} title="Usar saldo">
+                      Usar Saldo
+                    </button>
+                    <input
+                      type="number"
+                      value={tempoExtra}
+                      onChange={e => setTempoExtra(e.target.value)}
+                      style={{ width: 60, marginLeft: 8 }}
+                      placeholder="Tempo extra"
+                    />
+                    <button onClick={() => adicionarTempoExtra(idx)} style={{ marginLeft: 8 }}>
+                      + Tempo Extra
+                    </button>
+                  </>
+                )}
+              </td>
+              <td>{o.saldo || 0}</td>
+              <td>
+                <button onClick={() => setOradorAtivoIdx(idx)}>▶ Iniciar</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* CONTROLES DO ORADOR ATIVO */}
+      {oradorAtivoIdx >= 0 && (
+        <div style={{ padding: 12, border: "1px solid #ccc", borderRadius: 8, marginBottom: 12 }}>
+          <h5>Orador Ativo: {oradores[oradorAtivoIdx].nome} ({oradores[oradorAtivoIdx].partido})</h5>
+          <p>
+            Tempo restante: {tempoRestante}s{" "}
+            <button onClick={cronometroAtivo ? pausarFala : iniciarFala}>
+              {cronometroAtivo ? "Pausar" : "Iniciar"}
+            </button>
+            <button onClick={encerrarFala} style={{ marginLeft: 10 }}>Encerrar Fala</button>
+            <button onClick={proximoOrador} style={{ marginLeft: 10 }}>Próximo Orador</button>
+          </p>
+          <textarea
+            placeholder="Digite o resumo da fala..."
+            value={resumoFala}
+            onChange={e => setResumoFala(e.target.value)}
+            style={{ width: "100%", minHeight: 40, marginTop: 10 }}
+          />
+        </div>
+      )}
+
+      {/* BLOCO DE CEDER TEMPO */}
+      {oradorAtivoIdx >= 0 && (
+        <div style={{ marginTop: 8, background: "#eef", padding: 10, borderRadius: 5 }}>
+          <b>Ceder tempo para outro orador:</b>{" "}
+          <select value={oradorDestinoCeder} onChange={e => setOradorDestinoCeder(e.target.value)}>
+            <option value="">Selecione...</option>
+            {oradores.map((o, idx) =>
+              idx !== oradorAtivoIdx ? <option key={o.id} value={o.id}>{o.nome}</option> : null
+            )}
+          </select>
+          <input
+            type="number"
+            placeholder="Tempo (s)"
+            value={tempoCeder}
+            min={1}
+            style={{ width: 60, marginLeft: 6 }}
+            onChange={e => setTempoCeder(e.target.value)}
+          />
+          <button className="botao-azul" onClick={confirmarCederTempo} style={{ marginLeft: 6 }}>
+            Ceder
+          </button>
+        </div>
+      )}
+
+      {/* HISTÓRICO DE TRANSFERÊNCIAS DE TEMPO */}
+      {transferenciasTempo.length > 0 && (
+        <div style={{ marginTop: 16, background: "#f9f9fa", border: "1px solid #eaeaea", borderRadius: 6, padding: 10 }}>
+          <b>Histórico de transferências de tempo:</b>
+          <ul>
+            {transferenciasTempo.map((t, idx) => (
+              <li key={idx}>
+                {t.de} <b>cedeu</b> {t.tempo}s para {t.para} <span style={{ color: "#888" }}>[{t.horario}]</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* RESUMOS DAS FALAS */}
+      <div style={{ marginTop: 16 }}>
+        <b>Resumos das Falas:</b>
+        <ul>
+          {oradores.filter(o => o.fala).map((o, idx) => (
+            <li key={idx}><b>{o.nome}:</b> {o.fala} <span style={{ color: "#888" }}>{o.horario || ""}</span></li>
+          ))}
+        </ul>
+      </div>
+
+      {/* ZERAR SALDOS */}
+      <button onClick={zerarSaldos} style={{ marginTop: 18, color: "#a00" }}>
+        Zerar Saldos (ao Encerrar Sessão)
+      </button>
+    </div>
+  );
+
+
+// ... Outras abas sem alteração.
+default:
+  // Igual ao seu código atual
+  return null;
+
 
   // ----------- RENDER PRINCIPAL -----------
   return (
