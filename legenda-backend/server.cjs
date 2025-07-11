@@ -1,5 +1,10 @@
 require('dotenv').config();
 console.log('Valor de TESTE_BASE:', process.env.TESTE_BASE);
+console.log(
+  'Qtd de caracteres FIREBASE_SERVICE_ACCOUNT:',
+  process.env.FIREBASE_SERVICE_ACCOUNT ? process.env.FIREBASE_SERVICE_ACCOUNT.length : 'VAZIO'
+);
+
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
