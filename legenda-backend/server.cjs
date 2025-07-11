@@ -17,7 +17,13 @@ const admin = require('firebase-admin');
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // Em produção/deploy (Railway, Render, etc): variável de ambiente base64
-  serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8'));
+  let firebaseAccountStr = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8');
+
+// Se quiser garantir, limpe quebras malformadas:
+firebaseAccountStr = firebaseAccountStr.replace(/\r\n/g, '\n'); // ou até .replace(/\r/g, "")
+
+serviceAccount = JSON.parse(firebaseAccountStr);
+
 } else {
   // Local: arquivo json
   serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
