@@ -5,7 +5,6 @@ const firebaseAdmin = require('firebase-admin');
 // Lê a variável de ambiente e converte do base64 para JSON
 const firebaseAccountStr = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8');
 
-let serviceAccount;
 try {
   serviceAccount = JSON.parse(firebaseAccountStr);
   console.log('Firebase service account carregada com sucesso!');
