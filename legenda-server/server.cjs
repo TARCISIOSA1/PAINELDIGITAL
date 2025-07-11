@@ -18,8 +18,8 @@ const db = admin.firestore();
 
 const app = express();
 const port = process.env.PORT || 3333;
+const upload = multer({ dest: '/tmp/' });
 
-const upload = multer({ dest: 'uploads/' });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
