@@ -1,4 +1,5 @@
 require('dotenv').config();
+console.log('Valor de TESTE_BASE:', process.env.TESTE_BASE);
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
