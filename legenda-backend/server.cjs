@@ -1,4 +1,16 @@
 require('dotenv').config();
+let firebaseAccountStr = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8');
+console.log('FIREBASE JSON PREVIEW:', firebaseAccountStr.slice(0, 100)); // Mostra o começo
+console.log('FIREBASE JSON FINAL:', firebaseAccountStr.slice(-100)); // Mostra o final
+console.log('FIREBASE JSON TOTAL:', firebaseAccountStr.length, 'caracteres');
+try {
+  serviceAccount = JSON.parse(firebaseAccountStr);
+  console.log('JSON PARSE OK!');
+} catch (e) {
+  console.log('ERRO NO JSON:', e.message);
+  throw e;
+}
+
 console.log('Valor de TESTE_BASE:', process.env.TESTE_BASE);
 console.log(
   'Qtd de caracteres FIREBASE_SERVICE_ACCOUNT:',
