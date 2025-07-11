@@ -1,9 +1,9 @@
 require('dotenv').config();
 let firebaseAccountStr = Buffer.from(process.env.TESTE_BASE, 'base64').toString('utf-8');
-console.log('FIREBASE JSON PREVIEW:', firebaseAccountStr.slice(0, 100)); // Mostra o começo
-console.log('FIREBASE JSON FINAL:', firebaseAccountStr.slice(-100)); // Mostra o final
+console.log('FIREBASE JSON PREVIEW:', firebaseAccountStr.slice(0, 100));
+console.log('FIREBASE JSON FINAL:', firebaseAccountStr.slice(-100));
 console.log('FIREBASE JSON TOTAL:', firebaseAccountStr.length, 'caracteres');
-let serviceAccount; // <--- Adicione essa linha antes do try
+let serviceAccount;
 try {
   serviceAccount = JSON.parse(firebaseAccountStr);
   console.log('JSON PARSE OK!');
@@ -11,13 +11,17 @@ try {
   console.log('ERRO NO JSON:', e.message);
   throw e;
 }
-
-
 console.log('Valor de TESTE_BASE:', process.env.TESTE_BASE);
 console.log(
   'Qtd de caracteres FIREBASE_SERVICE_ACCOUNT:',
   process.env.FIREBASE_SERVICE_ACCOUNT ? process.env.FIREBASE_SERVICE_ACCOUNT.length : 'VAZIO'
 );
+
+const admin = require('firebase-admin');
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
 
 const express = require('express');
 const multer = require('multer');
