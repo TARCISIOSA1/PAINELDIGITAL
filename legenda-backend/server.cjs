@@ -1,27 +1,28 @@
 require('dotenv').config();
-let firebaseAccountStr = Buffer.from(process.env.TESTE_BASE, 'base64').toString('utf-8');
-console.log('FIREBASE JSON PREVIEW:', firebaseAccountStr.slice(0, 100));
-console.log('FIREBASE JSON FINAL:', firebaseAccountStr.slice(-100));
-console.log('FIREBASE JSON TOTAL:', firebaseAccountStr.length, 'caracteres');
+
+const firebaseAdmin = require('firebase-admin');
+
+// Lê a variável de ambiente e converte do base64 para JSON
+const firebaseAccountStr = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8');
+
 let serviceAccount;
 try {
   serviceAccount = JSON.parse(firebaseAccountStr);
-  console.log('JSON PARSE OK!');
+  console.log('Firebase service account carregada com sucesso!');
 } catch (e) {
-  console.log('ERRO NO JSON:', e.message);
+  console.error('Erro ao decodificar a variável FIREBASE_SERVICE_ACCOUNT:', e.message);
   throw e;
 }
-console.log('Valor de TESTE_BASE:', process.env.TESTE_BASE);
-console.log(
-  'Qtd de caracteres FIREBASE_SERVICE_ACCOUNT:',
-  process.env.FIREBASE_SERVICE_ACCOUNT ? process.env.FIREBASE_SERVICE_ACCOUNT.length : 'VAZIO'
-);
 
-const admin = require('firebase-admin');
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+// Inicializa o Firebase Admin
+firebaseAdmin.initializeApp({
+  credential: firebaseAdmin.credential.cert(serviceAccount),
 });
 
+// Firestore pronto para usar:
+const db = firebaseAdmin.firestore();
+
+module.exports = { db, firebaseAdmin };
 
 const express = require('express');
 const multer = require('multer');
