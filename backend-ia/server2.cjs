@@ -5,18 +5,11 @@ const { OpenAI } = require('openai');
 const admin = require('firebase-admin');
 const axios = require('axios');
 
-// =================== ATENÇÃO ===================
-// Inicialização universal do Firebase Admin
+// =================== INICIALIZAÇÃO UNIVERSAL FIREBASE ADMIN ===================
 let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  // No deploy/cloud: variável de ambiente base64
-let serviceAccount = {};
-if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // Cloud/Deploy: variável de ambiente base64
   serviceAccount = JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8'));
-} else {
-  throw new Error("FIREBASE_SERVICE_ACCOUNT não definido! Adicione nas variáveis do Railway.");
-}
-
 } else {
   // Local: arquivo json
   serviceAccount = require('./camaravotacao-firebase-adminsdk-fbsvc-160f151a05.json');
@@ -27,18 +20,14 @@ admin.initializeApp({
 });
 
 const db = admin.firestore();
-
 const app = express();
 const port = process.env.PORT || 3334;
-
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 app.use(cors());
 app.use(express.json());
 
-// ==== ENDPOINTS INSTITUCIONAIS (opcional, mantenha se quiser) ====
-
-// Exemplo de boas-vindas
+// ========== ENDPOINT DE BOAS-VINDAS ==========
 app.get('/api/boasvindas', async (req, res) => {
   try {
     const prompt = `Gere uma mensagem institucional curta e cordial para dar boas-vindas ao público em uma sessão plenária legislativa municipal. Use linguagem solene, positiva e destaque a importância da transparência, democracia e participação popular.`;
@@ -57,8 +46,7 @@ app.get('/api/boasvindas', async (req, res) => {
   }
 });
 
-// ==== ENDPOINTS BÁSICOS ====
-
+// ========== ENDPOINTS BÁSICOS ==========
 app.post('/api/atas', async (req, res) => {
   try {
     const { periodoInicio, periodoFim, sessaoId } = req.body;
@@ -89,13 +77,12 @@ app.get('/api/sessoes', async (req, res) => {
   }
 });
 
-// ==== ENDPOINT UNIVERSAL IA (COM TUDO) ====
-
+// ========== ENDPOINT UNIVERSAL IA ==========
 app.post('/api/pergunte', async (req, res) => {
   try {
     const { pergunta } = req.body;
 
-    // 1. Busca no Firestore (inclusive legislação)
+    // 1. Busca no Firestore
     const sessoesSnap = await db.collection('sessoes').orderBy('dataInicio', 'desc').limit(10).get();
     const atasSnap = await db.collection('atas').get();
     const presencasSnap = await db.collection('presencas').get();
