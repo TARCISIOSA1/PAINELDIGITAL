@@ -13,6 +13,7 @@ let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   // Produção: variável de ambiente base64
   let firebaseAccountStr = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf-8');
+   console.log('FIREBASE_SERVICE_ACCOUNT:', firebaseAccountStr); // Adicione isso!
   firebaseAccountStr = firebaseAccountStr.replace(/\r\n/g, '\n'); // limpa quebras se necessário
   serviceAccount = JSON.parse(firebaseAccountStr);
 } else {
