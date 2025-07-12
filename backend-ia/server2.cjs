@@ -77,7 +77,7 @@ app.get('/api/sessoes', async (req, res) => {
   }
 });
 
-// ========== ENDPOINT UNIVERSAL IA ==========
+// ========== ENDPOINT UNIVERSAL IA (AGORA USANDO GNEWS) ==========
 app.post('/api/pergunte', async (req, res) => {
   try {
     const { pergunta } = req.body;
@@ -111,26 +111,27 @@ app.post('/api/pergunte', async (req, res) => {
     const legislacaoEleitoral = [];
     legislacaoEleitoralSnap.forEach(doc => legislacaoEleitoral.push({ id: doc.id, ...doc.data() }));
 
-    // 2. Busca na web (Google Custom Search API)
+    // 2. Busca na web (GNews API)
     let resultadosWeb = '';
     try {
-      const googleApiKey = process.env.GOOGLE_API_KEY;
-      const googleCx = process.env.GOOGLE_CX;
-      const resp = await axios.get('https://www.googleapis.com/customsearch/v1', {
+      const gnewsApiKey = process.env.GNEWS_API_KEY;
+      const resp = await axios.get('https://gnews.io/api/v4/search', {
         params: {
-          key: googleApiKey,
-          cx: googleCx,
           q: pergunta,
-          num: 3
+          lang: 'pt',
+          token: gnewsApiKey,
+          max: 3
         }
       });
-      if (resp.data.items) {
-        resultadosWeb = resp.data.items.map((item, i) =>
-          `${i + 1}. ${item.title}: ${item.snippet} (${item.link})`
+      if (resp.data.articles && resp.data.articles.length > 0) {
+        resultadosWeb = resp.data.articles.map((item, i) =>
+          `${i + 1}. ${item.title}: ${item.description} (${item.url})`
         ).join('\n');
+      } else {
+        resultadosWeb = 'Nenhuma notícia encontrada.';
       }
     } catch (err) {
-      resultadosWeb = 'Nenhum resultado relevante da web encontrado ou erro na busca.';
+      resultadosWeb = 'Nenhum resultado relevante da web encontrado ou erro na busca GNews.';
     }
 
     // Resumidores
