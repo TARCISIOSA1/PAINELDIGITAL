@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 
 // Usa o backend IA, definido no .env
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_IA;
+
 
 export default function PedidosIA() {
   const [periodoInicio, setPeriodoInicio] = useState('');
