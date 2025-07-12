@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
+// Usa o backend IA, definido no .env
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function PedidosIA() {
@@ -181,7 +182,7 @@ export default function PedidosIA() {
         </div>
       )}
 
-      {/* CSS embutido para responsividade real */}
+      {/* CSS embutido para responsividade */}
       <style>{`
         .pedidosia-container {
           max-width: 900px;
@@ -244,18 +245,17 @@ export default function PedidosIA() {
           text-align: center;
           margin-bottom: 12px;
         }
-       .pedidosia-pergunta textarea {
-  width: 95%;
-  max-width: 700px;
-  min-height: 80px;
-  font-size: 1rem;
-  border-radius: 9px;
-  padding: 10px;
-  border: 1.2px solid #bbc7da;
-  margin-top: 8px;
-  resize: vertical;
-}
-
+        .pedidosia-pergunta textarea {
+          width: 95%;
+          max-width: 700px;
+          min-height: 80px;
+          font-size: 1rem;
+          border-radius: 9px;
+          padding: 10px;
+          border: 1.2px solid #bbc7da;
+          margin-top: 8px;
+          resize: vertical;
+        }
         .pedidosia-pergunta button {
           margin-top: 13px;
           padding: 10px 25px;
